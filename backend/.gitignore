@@ -18,3 +18,9 @@
 /phpunit.xml
 /.phpunit.cache/
 ###< phpunit/phpunit ###
+
+###> project ###
+/.deptrac.cache
+/.phpunit.cache/
+/.php-cs-fixer.cache
+###< project ###
