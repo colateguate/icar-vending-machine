@@ -1,0 +1,20 @@
+{
+    // Mutation testing, deliberately scoped to the business core: mutating
+    // infrastructure glue produces noise; MSI over Domain + Application is
+    // the number that says "these tests would catch a regression".
+    "$schema": "vendor/infection/infection/resources/schema.json",
+    "source": {
+        "directories": [
+            "src/VendingMachine/Domain",
+            "src/VendingMachine/Application"
+        ]
+    },
+    "logs": {
+        "text": "var/infection.log"
+    },
+    "mutators": {
+        "@default": true
+    },
+    "minMsi": 85,
+    "minCoveredMsi": 90
+}

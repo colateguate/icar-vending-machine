@@ -1,0 +1,9 @@
+# Static analysis at the strictest level, no baseline: every commit must be
+# clean rather than grandfathered.
+parameters:
+    level: max
+    paths:
+        - src
+        - tests
+    excludePaths:
+        - tests/bootstrap.php

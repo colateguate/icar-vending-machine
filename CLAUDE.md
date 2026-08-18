@@ -84,7 +84,7 @@ make test-mutation  # Infection on Domain + Application
 make up             # docker compose up (backend + frontend)
 ```
 
-Until the Makefile exists, run tools directly from `backend/` (`vendor/bin/phpunit --testsuite unit`, `vendor/bin/deptrac`, `vendor/bin/phpstan analyse`).
+Direct equivalents from `backend/`: `vendor/bin/phpunit --testsuite unit|application|integration|acceptance`, `vendor/bin/phpstan analyse`, `vendor/bin/deptrac analyse` (config auto-detected from `deptrac.php`), `vendor/bin/php-cs-fixer fix`. Note: PHPUnit config is `phpunit.dist.xml` (PHPUnit 11 recipe convention). Mutation testing needs pcov/xdebug — absent on the local Windows PHP, so `make test-mutation` is effectively CI-only.
 
 ## Workflow
 
