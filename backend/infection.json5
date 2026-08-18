@@ -9,11 +9,39 @@
             "src/VendingMachine/Application"
         ]
     },
+    // Only the suites that are supposed to kill these mutants run here. An
+    // acceptance test killing a domain mutant proves nothing a unit test did
+    // not already prove, and it drags a kernel boot into every mutant run:
+    // the same suite costs 0.01s scoped versus 5.5s unscoped.
+    // Note the "=" form: Infection forwards this string as a single argv
+    // entry, so a space-separated option would reach PHPUnit as one unknown
+    // option name.
+    "testFrameworkOptions": "--testsuite=unit,application",
+    "timeout": 30,
     "logs": {
         "text": "var/infection.log"
     },
     "mutators": {
-        "@default": true
+        "@default": true,
+
+        // Money::fromDecimalString guards its input with
+        // /^\d+(\.\d{1,2})?$/ before parsing, so by the time the two (int)
+        // casts run the strings are provably digit-only and PHP's arithmetic
+        // operators juggle them to the identical int — verified across every
+        // shape the regex admits, same value and same type. The casts are not
+        // redundant, though: PHPStan at max level cannot carry the regex
+        // guarantee into the type system and rejects the expression without
+        // them ("Binary operation + between mixed and non-empty-string").
+        //
+        // So the two CastInt mutants there are equivalent by construction and
+        // no test can ever kill them. Recording that verdict here beats
+        // leaving a warning on every future pull request that touches this
+        // file, which only teaches people to stop reading warnings.
+        "CastInt": {
+            "ignore": [
+                "App\\VendingMachine\\Domain\\Money\\Money::fromDecimalString"
+            ]
+        }
     },
     "minMsi": 85,
     "minCoveredMsi": 90
