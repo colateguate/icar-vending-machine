@@ -157,6 +157,9 @@ final class MoneyTest extends TestCase
     public function test_it_refuses_a_negative_factor(): void
     {
         $this->expectException(InvalidArgumentException::class);
+        // Names the guard that must fire: without it the negative product would
+        // reach the constructor, which rejects it with a different message.
+        $this->expectExceptionMessage('negative factor');
 
         Money::fromCents(25)->multiplyBy(-1);
     }

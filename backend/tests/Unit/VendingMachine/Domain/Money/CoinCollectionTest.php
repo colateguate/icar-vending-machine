@@ -71,6 +71,15 @@ final class CoinCollectionTest extends TestCase
         self::assertSame(2, $increased->countOf(CoinDenomination::TEN_CENTS));
     }
 
+    public function test_adding_a_denomination_it_does_not_hold_yet_yields_exactly_one(): void
+    {
+        $coins = CoinCollection::empty()->add(CoinDenomination::FIVE_CENTS);
+
+        self::assertSame(1, $coins->countOf(CoinDenomination::FIVE_CENTS));
+        self::assertFalse($coins->isEmpty());
+        self::assertTrue($coins->total()->equals(Money::fromDecimalString('0.05')));
+    }
+
     public function test_it_totals_the_amount_it_holds(): void
     {
         $coins = CoinCollection::of(
@@ -120,6 +129,10 @@ final class CoinCollectionTest extends TestCase
     public function test_it_refuses_to_subtract_coins_it_does_not_hold(): void
     {
         $this->expectException(InvalidArgumentException::class);
+        // Naming the guard that must fire: without it the shortfall would slip
+        // through to the canonicalisation check, which throws the same type
+        // with a far less useful message.
+        $this->expectExceptionMessage('Cannot take 2 coin(s) of 25 cents from a collection holding 1');
 
         CoinCollection::fromCounts([25 => 1])->subtract(CoinCollection::fromCounts([25 => 2]));
     }
@@ -127,6 +140,7 @@ final class CoinCollectionTest extends TestCase
     public function test_it_refuses_to_subtract_a_denomination_it_never_had(): void
     {
         $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('from a collection holding 0');
 
         CoinCollection::fromCounts([25 => 1])->subtract(CoinCollection::fromCounts([5 => 1]));
     }
