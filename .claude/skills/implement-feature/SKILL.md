@@ -18,6 +18,8 @@ Violar la letra de las fases es violar el espíritu. No hay "fast path".
 
 **Anuncia la clasificación al usuario al arrancar.** Si el ticket viene de `.claude/tasks/`, léelo entero primero; sus criterios de aceptación son el contrato mínimo.
 
+**Antes de tocar un solo fichero, abre la rama.** `git checkout release/backend && git pull && git checkout -b feat/<slug>` (ver `CLAUDE.md` § Branching model). Commitear sobre `main` o sobre la release directamente es una violación del flujo, no un atajo.
+
 **Sub-tarea split:** si vas a tocar >5 archivos productivos, propón partir en tickets encadenados con `create-ticket` antes de seguir.
 
 ## Fase 1 — Diseño de contrato
@@ -76,8 +78,8 @@ Suite completa (`make test`), no solo lo tocado. Reporta counts exactos ("84/84 
 
 1. Escribe/actualiza el **ADR** decidido en Fase 1 (inglés, MADR, con alternativa rechazada y consecuencia negativa real).
 2. Mueve el ticket a `.claude/completed_tasks/` (si venía de ticket).
-3. Commit atómico Conventional en inglés (`feat(domain): ...`). El git log es entregable evaluado.
-4. **Antes de push: invoca `review-before-push`.** Con KO no se pushea.
+3. Commit atómico Conventional en inglés (`feat(domain): ...`) **en la rama de Fase 0**. El git log es entregable evaluado.
+4. **Antes de push: invoca `review-before-push`.** Con KO no se pushea. Con PASS, `git push -u origin <rama>` y **dile al usuario que abra el PR** hacia `release/backend` — tú no abres ni mergeas PRs.
 5. Anti-patrones detectados por el camino: NO los arregles de paso — pregunta al usuario y sugiere `/create-ticket` con `Origen` rellenado.
 
 Informe final numerado: (1) clasificación aplicada, (2) contrato implementado, (3) archivos con líneas, (4) tests por nivel con counts, (5) evidencia de verificación activa (comandos + outputs), (6) resultado de regresión, (7) ADR escrito o "no aplica" razonado, (8) hallazgos laterales.
