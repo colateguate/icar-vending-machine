@@ -86,6 +86,26 @@ make up             # docker compose up (backend + frontend)
 
 Direct equivalents from `backend/`: `vendor/bin/phpunit --testsuite unit|application|integration|acceptance`, `vendor/bin/phpstan analyse`, `vendor/bin/deptrac analyse` (config auto-detected from `deptrac.php`), `vendor/bin/php-cs-fixer fix`. Note: PHPUnit config is `phpunit.dist.xml` (PHPUnit 11 recipe convention). Mutation testing needs pcov/xdebug — absent on the local Windows PHP, so `make test-mutation` is effectively CI-only.
 
+## Branching model (git flow)
+
+```
+main                     production; only receives PRs from a release branch
+ └── release/backend     deliverable branch for the backend sprint (tickets 01-14)
+      ├── feat/<slug>    one branch per feature ticket
+      ├── fix/<slug>     one branch per bug ticket
+      └── chore/<slug>   tooling/process changes that are neither
+```
+
+Rules, in order:
+
+1. **Never commit directly to `main` or to a release branch.** Every change starts as a branch off the current release branch.
+2. Branch name comes from the ticket: `feat/` for new tickets, `fix/` for bugs, `chore/` for tooling. Kebab-case, short, no ticket number.
+3. When the ticket is done: push the branch. **The human opens the PR** into `release/backend` — Claude does not open or merge PRs.
+4. After the PR merges, `git checkout release/backend && git pull` before cutting the next branch.
+5. Merges into a release branch use `--no-ff` so the branch topology survives in the log (this is part of the evaluated deliverable).
+6. Frontend tickets (15-17) get their own `release/frontend` cut from `main`, after `release/backend` merges.
+7. `release/backend` → `main` is the final PR, once tickets 01-14 are in.
+
 ## Workflow
 
 - **Tickets** live in `.claude/tasks/<priority>-<slug>.md` (epic mode: `.claude/tasks/<epic>/NN-<priority>-<slug>.md`); completed tickets are **moved** to `.claude/completed_tasks/`. Created only via the `create-ticket` skill.

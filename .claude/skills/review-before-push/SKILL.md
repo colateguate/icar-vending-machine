@@ -9,8 +9,10 @@ Cuatro lentes independientes sobre el mismo diff, un solo veredicto. Con KO no s
 
 ## Fase 1 — Preparar el diff
 
-1. Si existe `origin/main` con commits: `git fetch origin main` y `git diff origin/main...HEAD` (con `--stat` primero para mostrar alcance). Si la rama de trabajo es otra base, úsala solo si el usuario la nombra.
-2. Si no hay upstream todavía (repo joven): `git --no-pager diff HEAD` + `git --no-pager diff --cached` + untracked relevantes vía `git status --short`.
+**Base de comparación inflexible: la rama de release, NUNCA `main`.** Estás en una `feat/*`, `fix/*` o `chore/*` cortada de `release/backend` (ver `CLAUDE.md` § Branching model); lo que se revisa es lo que esa rama añade sobre su release.
+
+1. `git fetch origin` y luego `git diff release/backend...HEAD` (con `--stat` primero para mostrar alcance). Si la release en curso es otra (`release/frontend`), úsala; si el usuario nombra otra base explícitamente, respétala.
+2. Si aún hay trabajo sin commitear que entra en el push: añade `git --no-pager diff HEAD` + `git --no-pager diff --cached` + untracked relevantes vía `git status --short`.
 3. Guardas de tamaño:
    - Diff vacío → dilo y para. No hay nada que revisar.
    - Diff trivial (<10 líneas en <2 archivos) → pregunta si de verdad quiere la revisión completa (overhead alto).
