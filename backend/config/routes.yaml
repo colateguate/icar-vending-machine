@@ -1,0 +1,8 @@
+# yaml-language-server: $schema=../vendor/symfony/routing/Loader/schema/routing.schema.json
+
+# All routes are declared explicitly in config/routes/api.yaml — this
+# project does not use #[Route] attributes (routes are infrastructure
+# configuration and must not decorate application code).
+
+api:
+    resource: routes/api.yaml
