@@ -22,7 +22,26 @@
         "text": "var/infection.log"
     },
     "mutators": {
-        "@default": true
+        "@default": true,
+
+        // Money::fromDecimalString guards its input with
+        // /^\d+(\.\d{1,2})?$/ before parsing, so by the time the two (int)
+        // casts run the strings are provably digit-only and PHP's arithmetic
+        // operators juggle them to the identical int — verified across every
+        // shape the regex admits, same value and same type. The casts are not
+        // redundant, though: PHPStan at max level cannot carry the regex
+        // guarantee into the type system and rejects the expression without
+        // them ("Binary operation + between mixed and non-empty-string").
+        //
+        // So the two CastInt mutants there are equivalent by construction and
+        // no test can ever kill them. Recording that verdict here beats
+        // leaving a warning on every future pull request that touches this
+        // file, which only teaches people to stop reading warnings.
+        "CastInt": {
+            "ignore": [
+                "App\\VendingMachine\\Domain\\Money\\Money::fromDecimalString"
+            ]
+        }
     },
     "minMsi": 85,
     "minCoveredMsi": 90
