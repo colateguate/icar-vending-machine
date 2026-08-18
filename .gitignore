@@ -1,0 +1,25 @@
+# The original challenge statement is kept locally for reference but must never
+# enter the public repository (it contains the company name, which the brief
+# forbids from appearing anywhere in the code or history).
+CHALLENGE-DESCRIPTION.md
+
+# Local editor/agent settings not meant for the public repo
+.setting/
+.claude/settings.local.json
+
+# PHP / Symfony
+backend/vendor/
+backend/var/
+backend/.env.local
+backend/.env.*.local
+backend/.phpunit.cache/
+backend/.php-cs-fixer.cache
+
+# Node / React
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
