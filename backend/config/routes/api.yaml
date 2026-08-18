@@ -1,0 +1,6 @@
+# Explicit route table for the JSON API. One invokable controller per route.
+
+api_health:
+    path: /api/health
+    controller: App\VendingMachine\Delivery\Http\Controller\HealthController
+    methods: [GET]

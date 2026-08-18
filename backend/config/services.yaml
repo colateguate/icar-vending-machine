@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=../vendor/symfony/dependency-injection/Loader/schema/services.schema.json
+
+# Entry point for service registration. Layer-specific wiring lives in
+# config/services/ (application.yaml, infrastructure.yaml, domain.yaml).
+#
+# The Domain layer is deliberately EXCLUDED from container autoregistration:
+# aggregates and value objects are not services — they are constructed by
+# the application layer or rehydrated from persistence. The container only
+# knows the domain classes explicitly wired in config/services/domain.yaml.
+
+imports:
+    - { resource: 'services/', type: directory }
+
+parameters:
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/Kernel.php'
+            - '../src/Shared/Domain/'
+            - '../src/VendingMachine/Domain/'
