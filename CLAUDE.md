@@ -61,7 +61,7 @@ Layer vocabulary for the interview: `Delivery/` = primary/driving adapters (the 
 - **`CannotDispenseChange` is a domain error**: the sale is rejected, coins stay in escrow, `RETURN-COIN` remains the single refund path. The aggregate uses compute-then-commit — no field is mutated before all checks pass. `requiresExactChange()` is exposed in the API as `exactChangeOnly`.
 - Commands carry **primitives**, handlers translate to VOs; VO constructors ARE the validation. Command handlers return `void` unless the physical result cannot be recovered by a later query (`PurchaseResult`, `ReturnedCoinsResult` — the coins have physically left the machine).
 - Concurrency: **optimistic locking** (Doctrine `<version/>` column) → HTTP 409. Retries/pessimistic locking deliberately out of scope.
-- Errors over HTTP: RFC 7807 `application/problem+json` via an explicit `ErrorCatalog` map. Rule: **422** = invalid input value · **409** = valid value conflicting with machine state · **404** = named thing doesn't exist.
+- Errors over HTTP: RFC 7807 `application/problem+json` via an explicit `ErrorCatalog` map. Rule, keyed on whose problem it is: **422** = the value you sent is not valid input · **409** = the value is valid but conflicts with current machine state · **404** = you named something that does not exist (`UnknownProductSelector` — the caller asked for SODA and there is no SODA). A machine that was never provisioned is **503**, not 404: the caller named nothing (the route is the singleton `/api/machine`) and the fault is ours, so the honest answer is "not ready yet". Anything the domain does not anticipate is **500** with the detail suppressed.
 
 ## Test levels — which question each answers
 
@@ -72,7 +72,9 @@ Layer vocabulary for the interview: `Delivery/` = primary/driving adapters (the 
 | Integration | `backend/tests/Integration/` | yes | **Doctrine + real SQLite** | Does the adapter honor the port? |
 | Acceptance | `backend/tests/Acceptance/` | yes | Doctrine + real SQLite | Does it work end-to-end through HTTP/CLI, error contract included? |
 
-Non-negotiables: the three challenge examples exist as executable specification (HTTP acceptance + CLI); the repository **contract test** is abstract and runs against *both* adapters; never mock value objects; test business rules at unit level, not through the kernel. Infection (mutation testing) gates `Domain/` + `Application/` only.
+**A test's level is decided by the question it answers, not by the machinery it happens to need.** The "boots kernel" and "repository" columns describe what each level typically requires, not a requirement every test in that suite must meet: the in-memory repository test needs neither kernel nor database, yet "does this adapter honor the port?" is an integration question, so it belongs there.
+
+Non-negotiables: the three challenge examples exist as executable specification (HTTP acceptance + CLI); the repository **contract test** is abstract (`tests/Support/Contract/`) and every adapter extends it — written as a contract from the *first* adapter, so it states what any implementation must guarantee rather than what one happens to do. Expectations that legitimately differ between adapters (Doctrine's identity map returns the same instance twice; the in-memory double copies on read) stay in the adapter's own test, never in the contract. Never mock value objects; test business rules at unit level, not through the kernel. Infection (mutation testing) gates `Domain/` + `Application/` only.
 
 ## Commands (once scaffolding lands — tickets 2–3)
 

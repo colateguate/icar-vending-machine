@@ -8,7 +8,8 @@ El segundo adaptador del puerto de persistencia: la demostración tangible de qu
 - [ ] Tipos DBAL: MoneyType (int), CoinCollectionType (JSON), ProductSelectorType, MachineIdType
 - [ ] `DoctrineVendingMachineRepository` implementa el puerto; migración Doctrine inicial (no schema:create)
 - [ ] Optimistic locking: columna `<version/>` en XML, `OptimisticLockException` → `ConcurrentMachineModification` (infra) → 409
-- [ ] `VendingMachineRepositoryContractTest` ABSTRACTO extendido por ambos adaptadores con la suite idéntica
+- [ ] `DoctrineVendingMachineRepositoryTest` **extiende el contrato ya existente** `tests/Support/Contract/VendingMachineRepositoryContract.php` (creado en el ticket 06) y solo implementa `repository()`. NO duplicar los tests del contrato ni relajarlos
+- [ ] Ojo con el *identity map* de Doctrine: dos `find()` en la misma unidad de trabajo devuelven **el mismo objeto**, al revés que el doble InMemory que copia al leer. Por eso los tests de aislamiento de copias viven en el test del adaptador InMemory y NO en el contrato — no los subas
 - [ ] `ConcurrentPurchaseTest`: dos EntityManagers, un ítem de stock, exactamente una compra gana
 - [ ] `bin/console app:machine:provision` siembra Water/Juice/Soda ×10 + reserva de cambio
 - [ ] Acceptance sigue verde ahora contra SQLite real

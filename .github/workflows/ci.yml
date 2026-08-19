@@ -86,3 +86,12 @@ jobs:
           else
             echo "No Domain/Application code yet - skipping mutation testing."
           fi
+      # Escaped mutants are annotated on the diff by --logger-github, but
+      # uncovered ones are not: they mean business-core code that no test in
+      # the mutated suites executes at all, which is worth naming rather than
+      # leaving as a number in a summary.
+      - name: Report uncovered mutants
+        if: always()
+        run: |
+          test -f var/infection.log || exit 0
+          grep -i -A 40 'not covered' var/infection.log | head -45 || echo 'No uncovered mutants.'
