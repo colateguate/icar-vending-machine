@@ -16,7 +16,7 @@ delivery
 ## Archivos probablemente afectados
 - `backend/src/VendingMachine/Delivery/Cli/RunMachineScriptCommand.php` (a crear)
 - `backend/tests/Acceptance/Cli/ChallengeScriptTest.php` (a crear)
-- `backend/config/services/` — registro del comando
+- `backend/config/services.yaml` — registro del comando (el directorio `config/services/` no se usa: ver el comentario de cabecera de ese fichero)
 
 ## Enfoque sugerido
 1. Rojo: `ChallengeScriptTest` con las 3 secuencias.

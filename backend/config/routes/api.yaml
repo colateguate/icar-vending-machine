@@ -1,6 +1,39 @@
 # Explicit route table for the JSON API. One invokable controller per route.
+#
+# The path is /api/machine and not /api/machines/{id} because this deployment
+# serves one machine and its identity is configuration, not something a caller
+# supplies (MachineLocator). The aggregate already carries a MachineId, so a
+# fleet is a change to this file and that class rather than a redesign.
 
 api_health:
     path: /api/health
     controller: App\VendingMachine\Delivery\Http\Controller\HealthController
     methods: [GET]
+
+api_machine_state:
+    path: /api/machine
+    controller: App\VendingMachine\Delivery\Http\Controller\GetMachineStateController
+    methods: [GET]
+
+api_machine_insert_coin:
+    path: /api/machine/coins
+    controller: App\VendingMachine\Delivery\Http\Controller\InsertCoinController
+    methods: [POST]
+
+api_machine_return_coins:
+    path: /api/machine/coins/return
+    controller: App\VendingMachine\Delivery\Http\Controller\ReturnCoinsController
+    methods: [POST]
+
+# Plural: a purchase is something that happened, not a procedure being called.
+api_machine_purchase:
+    path: /api/machine/purchases
+    controller: App\VendingMachine\Delivery\Http\Controller\PurchaseProductController
+    methods: [POST]
+
+# PUT: a service visit sets what the machine stocks and holds, so sending it
+# twice leaves the same machine.
+api_machine_service:
+    path: /api/machine/service
+    controller: App\VendingMachine\Delivery\Http\Controller\ServiceMachineController
+    methods: [PUT]
