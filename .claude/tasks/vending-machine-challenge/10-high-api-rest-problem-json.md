@@ -6,7 +6,8 @@ El borde HTTP: cinco controladores invocables que deserializan, despachan al bus
 ## Criterios de aceptación
 - [ ] Endpoints: GET /api/machine · POST /api/machine/coins · POST /api/machine/coins/return · POST /api/machine/purchases · PUT /api/machine/service — controladores invocables de acción única
 - [ ] Dinero como string decimal en TODO el contrato JSON ("0.65", nunca 0.65 numérico); `exactChangeOnly` en el estado
-- [ ] `ErrorCatalog` (FQCN → status+code): UnsupportedCoin→422, UnknownProductSelector→404, ProductOutOfStock→409, InsufficientFunds→409, CannotDispenseChange→409 exact_change_required, MachineNotFound→503, resto→500 con detail suprimido
+- [ ] `ErrorCatalog` (FQCN → status+code): UnsupportedCoin→422, **InvalidMoneyAmount→422**, **InvalidProductSelector→422**, UnknownProductSelector→404, ProductOutOfStock→409, InsufficientFunds→409, CannotDispenseChange→409 exact_change_required, MachineNotFound→503, resto→500 con detail suprimido
+- [ ] **Test de exhaustividad del catálogo**: recorrer todas las implementaciones de `VendingMachineError` del dominio y fallar si alguna no está catalogada. Sin él, cada excepción de dominio nueva se degrada en silencio a 500 y culpa al servidor de un error del cliente
 - [ ] `DomainExceptionSubscriber` produce application/problem+json; JSON malformado → 400 invalid_request
 - [ ] `ChallengeExamplesTest` de aceptación con los 3 ejemplos literales del enunciado
 - [ ] Suite `backend/tests/Acceptance/Http/` cubre cada endpoint + `ProblemDetailsContractTest`
