@@ -42,6 +42,7 @@ backend/src/
 | `Application` | `Domain`, `Shared/Domain` |
 | `Delivery` | `Application`, `Domain`, `Shared/Domain`, `Symfony\*`, `Psr\*` |
 | `Infrastructure` | everything above + `Doctrine\*` |
+| `Shared/Infrastructure` | `Shared/Domain`, `Symfony\*`, `Doctrine\*`, `Psr\*` |
 
 Layer vocabulary for the interview: `Delivery/` = primary/driving adapters (the outside world delivers requests to the core); `Infrastructure/` = secondary/driven adapters (the core delegates outward through ports). That pair **is** the hexagon.
 

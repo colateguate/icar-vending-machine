@@ -5,7 +5,7 @@
 
 ## Context and problem statement
 
-The machine has four things a caller can ask it to do and one thing a caller can ask about it. That is a small surface, and "CQRS" covers everything from separating two method names to running two databases kept in sync by a projection. Choosing where on that scale to sit is the decision; taking the whole package because the acronym is fashionable would be the mistake.
+The machine has four things a caller can ask it to do and one thing a caller can ask about it.[^count] That is a small surface, and "CQRS" covers everything from separating two method names to running two databases kept in sync by a projection. Choosing where on that scale to sit is the decision; taking the whole package because the acronym is fashionable would be the mistake.
 
 ## Decision drivers
 
@@ -46,3 +46,5 @@ Two consequences of the shape chosen:
 - Every use case costs two files (a message and a handler) where a service method would have cost none.
 - The type safety of the buses rests on PHPStan generics rather than the language. It is checked at analysis time, and a caller who ignores the analyser gets `mixed`.
 - Until Doctrine lands the transaction middleware is not there, which means the central justification is configured but not yet true. That is tracked, not glossed over.
+
+[^count]: True when this was written (ticket 09). Provisioning arrived with ticket 11, so today it is five commands and one query — which only sharpens the question this record answers: a bus for five use cases still has to justify itself, and the middleware is still the justification. The decision is unchanged and the record is left as it was made.
