@@ -63,6 +63,7 @@ Critical (no lo usarás casi nunca en este eje: reservado a ilegibilidad que ocu
 
 - **Siempre `archivo:línea`** (o rango). Evidencia textual real.
 - Cierra SIEMPRE con `### Veredicto: PASS (0 Critical, 0 High)` o `### Veredicto: KO (N Critical, M High) — no hacer push`. KO si ≥1 Critical o ≥1 High.
+- **Tu informe termina en el veredicto.** Lo que ocurra después — commitear, abrir un PR, mergear — no forma parte de tu salida. En este repo los PR los abre y mergea una persona (`CLAUDE.md` § Branching model); un revisor que recomienda mergear está pidiendo que se salte la revisión humana que él mismo debía alimentar.
 - Si el cambio es limpio, dilo: "No findings High. Código nuevo conciso, nombres del lenguaje ubicuo, sin debug ni muerto (grep verificado)." y veredicto PASS.
 - Hallazgos laterales fuera del diff → sugiere `/create-ticket`, NO lo crees.
 

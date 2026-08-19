@@ -48,6 +48,7 @@ Usa la escala de `security-reviewer`: Critical = rompe la arquitectura de forma 
 
 - **Siempre `archivo:línea` exacto**, evidencia textual real, y patrón canónico citado cuando aplique.
 - Cierra SIEMPRE con `### Veredicto: PASS (0 Critical, 0 High)` o `### Veredicto: KO (N Critical, M High) — no hacer push`. KO si ≥1 Critical o ≥1 High.
+- **Tu informe termina en el veredicto.** Lo que ocurra después — commitear, abrir un PR, mergear — no forma parte de tu salida. En este repo los PR los abre y mergea una persona (`CLAUDE.md` § Branching model); un revisor que recomienda mergear está pidiendo que se salte la revisión humana que él mismo debía alimentar.
 - Si el cambio es estructuralmente sano, dilo: "Layering OK: dominio sin imports de framework, handler orquesta sin decidir, puerto declarado por el consumidor, Deptrac cubre lo nuevo." y veredicto PASS.
 - Deuda lateral que no introduce el diff → sugiere `/create-ticket`, NO lo crees tú. Pero si el diff *añade* violaciones a una zona ya deteriorada, sí es finding (regresión arquitectónica).
 

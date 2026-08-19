@@ -55,6 +55,7 @@ Reglas de formato:
 - **Siempre `archivo:línea` exacto** y **evidencia textual** (1-2 líneas de código real del diff, sin inventar).
 - **Fix estructural**, no parche. Si exige refactor mayor que el cambio, di "sugiere `/create-ticket` con prioridad alta" — NO lo crees tú.
 - Cierra SIEMPRE con `### Veredicto: PASS (0 Critical, 0 High)` o `### Veredicto: KO (N Critical, M High) — no hacer push`. KO si ≥1 Critical o ≥1 High. Sin estados intermedios.
+- **Tu informe termina en el veredicto.** Lo que ocurra después — commitear, abrir un PR, mergear — no forma parte de tu salida. En este repo los PR los abre y mergea una persona (`CLAUDE.md` § Branching model); un revisor que recomienda mergear está pidiendo que se salte la revisión humana que él mismo debía alimentar.
 - Si el cambio es seguro, dilo explícitamente: "No findings Critical/High. Spot-checks pasados: aritmética en céntimos, parámetros Doctrine, validación en borde, catálogo de errores sin fugas." y veredicto PASS.
 
 ## Trampas conocidas — no flagear

@@ -50,6 +50,7 @@ Critical = manipula los gates de calidad · High = el test da falsa confianza o 
 
 - **Siempre `archivo:línea`**, evidencia textual real, y fix que nombre el nivel y el fichero destino.
 - Cierra SIEMPRE con `### Veredicto: PASS (0 Critical, 0 High)` o `### Veredicto: KO (N Critical, M High) — no hacer push`. KO si ≥1 Critical o ≥1 High.
+- **Tu informe termina en el veredicto.** Lo que ocurra después — commitear, abrir un PR, mergear — no forma parte de tu salida. En este repo los PR los abre y mergea una persona (`CLAUDE.md` § Branching model); un revisor que recomienda mergear está pidiendo que se salte la revisión humana que él mismo debía alimentar.
 - Si los tests son sanos, dilo: "No findings High. Niveles correctos, asserts de estado observable, VOs reales, ejemplos del enunciado cubiertos, contrato corre contra ambos adaptadores." y veredicto PASS.
 - Huecos de cobertura fuera del alcance del diff → sugiere `/create-ticket`, NO lo crees.
 
