@@ -6,7 +6,7 @@ Cierra el dominio: `purchase()` une inventario, escrow, reserva y estrategia de 
 ## Criterios de aceptación
 - [ ] `VendingMachine::purchase(ProductSelector, ChangeStrategy): DispensedGoods` — la estrategia entra por PARÁMETRO (double dispatch), no por constructor
 - [ ] Compute-then-commit: si algo falla (stock, fondos, cambio) NINGÚN campo ha mutado — test que asserta igualdad total de estado tras compra fallida
-- [ ] Las monedas insertadas se unen al pool de cambio antes de seleccionar (merge escrow+reserva, filtrado dispensableOnly)
+- [ ] Las monedas insertadas se unen al pool de cambio antes de seleccionar: `changeReserve.merge(insertedCoins)`. **Pasar el pool SIN filtrar** — la estrategia ya filtra `dispensableOnly()` internamente porque el puerto lo promete (ADR-0006), y filtrar también aquí sería redundante y dejaría la invariante en dos sitios. Añade un test que pase una reserva con monedas de 1.00 y compruebe que el cambio no las incluye, para que la garantía quede verificada desde el agregado y no solo desde la estrategia
 - [ ] `InsufficientFunds` con el importe faltante; `CannotDispenseChange` deja el escrow intacto
 - [ ] Evento `ProductDispensed`; `requiresExactChange(): bool` expuesto
 - [ ] Tests unitarios de los ejemplos 1 y 3 del enunciado: 1+0.25+0.25→GET-SODA→SODA sin cambio; 1→GET-WATER→WATER + [0.25, 0.10] y reserva decrementada exactamente en esas monedas
