@@ -48,6 +48,18 @@ services:
             - '../src/VendingMachine/Domain/'
 
     # ------------------------------------------------------------------
+    # Controllers. They are plain invokable classes rather than subclasses of
+    # AbstractController, so nothing hands them a service locator and their
+    # dependencies are the ones in their constructor. The price of that is
+    # this tag: Symfony only fetches a controller from the container when it
+    # is told the class is one, and without it a controller with constructor
+    # arguments is instantiated with none and fails at the first request.
+    # ------------------------------------------------------------------
+    App\VendingMachine\Delivery\Http\Controller\:
+        resource: '../src/VendingMachine/Delivery/Http/Controller/'
+        tags: ['controller.service_arguments']
+
+    # ------------------------------------------------------------------
     # Ports bound to adapters. This is where the hexagon is actually wired:
     # swapping an implementation is an edit here, not a change in the core.
     # ------------------------------------------------------------------

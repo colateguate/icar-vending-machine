@@ -43,3 +43,7 @@ A retried purchase request vends twice. The intended solution is an `Idempotency
 ## Concurrency is detected, not prevented
 
 Two simultaneous purchases are handled with optimistic locking: the second writer fails and gets a 409. Automatic retries, pessimistic locking and distributed locks are deliberately out of scope — real contention on one machine is effectively zero, so the cheap detector is the right tool and the expensive serialiser is not.
+
+## Coin collections travel as lists, not as maps keyed by cents
+
+A bag of coins is `[{"denomination": "0.25", "count": 4}]` in both directions, rather than `{"25": 4}`. The map is closer to how the model counts — integer cents — and that is the argument against it: every other amount in this API is a decimal string, and a response mixing `"price": "0.65"` with a key of `25` describes two units in one document. Translating the list into the cents the command carries is the delivery layer's job, which is where the rest of the wire format is decided too.

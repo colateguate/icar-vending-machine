@@ -6,6 +6,7 @@ namespace App\Shared\Infrastructure\Bus\Command;
 
 use App\Shared\Domain\Bus\Command\Command;
 use App\Shared\Domain\Bus\Command\CommandBus;
+use Symfony\Component\Messenger\Exception\HandlerFailedException;
 use Symfony\Component\Messenger\HandleTrait;
 use Symfony\Component\Messenger\MessageBusInterface;
 
@@ -26,6 +27,16 @@ final class MessengerCommandBus implements CommandBus
     }
 
     /**
+     * The unwrapping is the other half of the port's promise. Messenger packs
+     * whatever a handler threw inside a HandlerFailedException, so without
+     * this the caller would have to catch a messaging library's type to find
+     * out a product was sold out — and the interface exists precisely so that
+     * nothing outside this layer names one. Since exactly one handler runs per
+     * command, the first wrapped failure is the failure.
+     *
+     * A missing or duplicated handler is deliberately not unwrapped: that is
+     * this adapter's own wiring being wrong, not the domain refusing anything.
+     *
      * @template TResult
      *
      * @param Command<TResult> $command
@@ -34,7 +45,11 @@ final class MessengerCommandBus implements CommandBus
      */
     public function dispatch(Command $command): mixed
     {
-        /* @var TResult */
-        return $this->handle($command);
+        try {
+            /* @var TResult */
+            return $this->handle($command);
+        } catch (HandlerFailedException $failure) {
+            throw $failure->getPrevious() ?? $failure;
+        }
     }
 }

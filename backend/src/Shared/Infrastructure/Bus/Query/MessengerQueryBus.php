@@ -6,6 +6,7 @@ namespace App\Shared\Infrastructure\Bus\Query;
 
 use App\Shared\Domain\Bus\Query\Query;
 use App\Shared\Domain\Bus\Query\QueryBus;
+use Symfony\Component\Messenger\Exception\HandlerFailedException;
 use Symfony\Component\Messenger\HandleTrait;
 use Symfony\Component\Messenger\MessageBusInterface;
 
@@ -19,6 +20,10 @@ final class MessengerQueryBus implements QueryBus
     }
 
     /**
+     * Unwrapped for the same reason as on the command side: asking a machine
+     * that was never provisioned must arrive as MachineNotFound, not as a
+     * messaging library's wrapper around it.
+     *
      * @template TResponse
      *
      * @param Query<TResponse> $query
@@ -27,7 +32,11 @@ final class MessengerQueryBus implements QueryBus
      */
     public function ask(Query $query): mixed
     {
-        /* @var TResponse */
-        return $this->handle($query);
+        try {
+            /* @var TResponse */
+            return $this->handle($query);
+        } catch (HandlerFailedException $failure) {
+            throw $failure->getPrevious() ?? $failure;
+        }
     }
 }
