@@ -67,9 +67,11 @@ services:
     App\Shared\Domain\Bus\Query\QueryBus: '@App\Shared\Infrastructure\Bus\Query\MessengerQueryBus'
     App\Shared\Domain\Bus\Event\EventBus: '@App\Shared\Infrastructure\Bus\Event\MessengerEventBus'
 
-    # Until Doctrine arrives (ticket 11) the machine lives in memory and does
-    # not survive a request. A known gap, not a design.
-    App\VendingMachine\Domain\Machine\VendingMachineRepository: '@App\VendingMachine\Infrastructure\Persistence\InMemory\InMemoryVendingMachineRepository'
+    # The line that makes the hexagon real: the whole application asks for the
+    # port, and this is the only place that says which adapter answers. The
+    # in-memory one is still in the codebase and still passes the same contract
+    # test (ADR-0009) — swapping back is this one line.
+    App\VendingMachine\Domain\Machine\VendingMachineRepository: '@App\VendingMachine\Infrastructure\Persistence\Doctrine\DoctrineVendingMachineRepository'
 
     # Optimal is the default because it never refuses a sale the machine could
     # serve. Greedy stays in the codebase as the tested counterexample that
@@ -112,8 +114,15 @@ when@test:
             public: true
 
         App\VendingMachine\Domain\Machine\VendingMachineRepository:
-            alias: App\VendingMachine\Infrastructure\Persistence\InMemory\InMemoryVendingMachineRepository
+            alias: App\VendingMachine\Infrastructure\Persistence\Doctrine\DoctrineVendingMachineRepository
             public: true
+
+        # A use case that writes and then fails, which no real one does. It is
+        # the only way to prove the transaction middleware actually rolls back,
+        # and it exists only here (see CommandTransactionTest).
+        App\Tests\Support\Doubles\SaveThenFailHandler:
+            autowire: true
+            tags: [{ name: messenger.message_handler, bus: command.bus }]
 
         # A separate id on purpose: aliasing "query.bus" itself would replace
         # the Messenger bus of that name and the handlers would have nowhere

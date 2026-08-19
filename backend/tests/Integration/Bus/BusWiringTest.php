@@ -7,6 +7,7 @@ namespace App\Tests\Integration\Bus;
 use App\Shared\Domain\Bus\Command\CommandBus;
 use App\Shared\Domain\Bus\Query\QueryBus;
 use App\Tests\Support\Builder\VendingMachineBuilder;
+use App\Tests\Support\Doctrine\Schema;
 use App\VendingMachine\Application\Command\InsertCoin\InsertCoinCommand;
 use App\VendingMachine\Application\Command\PurchaseProduct\PurchaseProductCommand;
 use App\VendingMachine\Application\Command\ReturnCoins\ReturnCoinsCommand;
@@ -146,6 +147,10 @@ final class BusWiringTest extends KernelTestCase
     private function givenAProvisionedMachine(): void
     {
         self::bootKernel();
+
+        // The container now hands out the Doctrine adapter, so the bus
+        // tests write to a real database like everything else.
+        Schema::createForContainer(self::getContainer());
 
         $repository = self::getContainer()->get(VendingMachineRepository::class);
         self::assertInstanceOf(VendingMachineRepository::class, $repository);

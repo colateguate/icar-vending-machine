@@ -46,4 +46,16 @@ final class MachineIdTest extends TestCase
         self::assertTrue(MachineId::fromString('lobby-01')->equals(MachineId::fromString('lobby-01')));
         self::assertFalse(MachineId::fromString('lobby-01')->equals(MachineId::fromString('lobby-02')));
     }
+
+    /**
+     * Anything that keys a map by identity needs the identity to spell itself,
+     * and a persistence adapter's identity map is one of those. Asserted here
+     * rather than left to the adapter's tests, because if this ever stopped
+     * being the plain value the failure would surface as machines quietly
+     * overwriting each other.
+     */
+    public function test_it_spells_itself_as_its_own_value(): void
+    {
+        self::assertSame('lobby-01', (string) MachineId::fromString('lobby-01'));
+    }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Acceptance\Http;
 
 use App\Tests\Support\Builder\VendingMachineBuilder;
+use App\Tests\Support\Doctrine\Schema;
 use App\VendingMachine\Domain\Machine\VendingMachine;
 use App\VendingMachine\Domain\Machine\VendingMachineRepository;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -13,13 +14,20 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 /**
  * Shared setup for the tests that exercise the API the way a client does.
  *
- * Two things every test here needs. First, the kernel must survive between
- * requests: until Doctrine arrives the machine lives in a service, and a
- * rebooted kernel would forget it between "insert a coin" and "buy the soda" —
- * the very sequence the brief's examples are made of. Second, a machine has to
- * exist before anything can be asked of it, and it is provisioned through the
- * repository rather than through the API because PUT /api/machine/service
- * services a machine that is already there; it does not create one.
+ * Three things every test here needs.
+ *
+ * A database: the tests run against real SQLite, held in memory, with the
+ * tables built from the real mapping.
+ *
+ * A kernel that survives between requests. An in-memory database lives for
+ * exactly as long as the connection that opened it, so a rebooted kernel would
+ * open a new one and find nothing — losing the machine between "insert a coin"
+ * and "buy the soda", which is the sequence the brief's examples are made of.
+ * It also means no cleanup: the tables die with the test.
+ *
+ * And a machine, put there through the repository rather than through the API,
+ * because PUT /api/machine/service services a machine that already exists; it
+ * does not create one. Creating is what app:machine:provision is for.
  */
 abstract class ApiTestCase extends WebTestCase
 {
@@ -29,6 +37,8 @@ abstract class ApiTestCase extends WebTestCase
     {
         $this->client = self::createClient();
         $this->client->disableReboot();
+
+        Schema::createForContainer(self::getContainer());
     }
 
     /**

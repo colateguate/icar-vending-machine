@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\VendingMachine\Delivery\Http\Error;
 
 use App\VendingMachine\Domain\Exception\CannotDispenseChange;
+use App\VendingMachine\Domain\Exception\ConcurrentMachineModification;
 use App\VendingMachine\Domain\Exception\InsufficientFunds;
 use App\VendingMachine\Domain\Exception\InvalidMoneyAmount;
 use App\VendingMachine\Domain\Exception\InvalidProductSelector;
@@ -53,6 +54,7 @@ final class ErrorCatalog
         ProductOutOfStock::class => ['status' => 409, 'code' => 'product_out_of_stock', 'title' => 'Product sold out'],
         InsufficientFunds::class => ['status' => 409, 'code' => 'insufficient_funds', 'title' => 'Insufficient funds'],
         CannotDispenseChange::class => ['status' => 409, 'code' => 'exact_change_required', 'title' => 'Exact change required'],
+        ConcurrentMachineModification::class => ['status' => 409, 'code' => 'concurrent_modification', 'title' => 'The machine changed underneath you'],
 
         // We could not read the request.
         MalformedJson::class => ['status' => 400, 'code' => 'malformed_json', 'title' => 'Malformed JSON body'],
