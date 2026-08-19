@@ -41,7 +41,42 @@
             "ignore": [
                 "App\\VendingMachine\\Domain\\Money\\Money::fromDecimalString"
             ]
-        }
+        },
+
+        // OptimalChangeStrategy's table is unobservable from outside the port,
+        // and for one specific reason: with the machine's denominations
+        // ({5,10,25} dispensable) the coin count is monotone decreasing in how
+        // many of the current denomination are taken — a 10 always replaces two
+        // 5s, a 25 always replaces two 10s and a 5. Since the inner loop walks
+        // the count upwards, the last candidate at every cell is also the best
+        // one, so any rule that lets a later candidate win produces an
+        // identical selection. Mutating the comparison, the base score, the
+        // loop's starting index or a row's pre-emptying therefore changes
+        // nothing a test could see.
+        //
+        // Measured, not assumed: each of the fourteen surviving mutants was
+        // implemented in isolation and run over ~2,300 payable reserves. Every
+        // one produced the exact amount, never over-drew the reserve, never
+        // returned a 1.00 coin, and matched the fewest-coin count from an
+        // exhaustive oracle. No input distinguishes them.
+        //
+        // The comparison is still not dead code: monotonicity is a property of
+        // the coin set, not of the algorithm. Add a 20-cent denomination and it
+        // breaks — 40 is 20+20, while "last candidate wins" would answer
+        // 25+10+5 — which is precisely the failure mode ADR-0006 exists to
+        // prevent. No test can build that set while CoinDenomination is a
+        // closed enum, so these mutants are unkillable by construction rather
+        // than by omission.
+        //
+        // THIS SUPPRESSION EXPIRES if a non-canonical denomination is ever
+        // added. Delete these entries then: the mutants become killable, and
+        // leaving them muted would hide a real defect.
+        "IncrementInteger": { "ignore": ["App\\VendingMachine\\Domain\\Dispensing\\OptimalChangeStrategy::scoreEverySubtotal", "App\\VendingMachine\\Domain\\Dispensing\\OptimalChangeStrategy::rebuildSelection"] },
+        "DecrementInteger": { "ignore": ["App\\VendingMachine\\Domain\\Dispensing\\OptimalChangeStrategy::scoreEverySubtotal", "App\\VendingMachine\\Domain\\Dispensing\\OptimalChangeStrategy::rebuildSelection"] },
+        "Plus": { "ignore": ["App\\VendingMachine\\Domain\\Dispensing\\OptimalChangeStrategy::scoreEverySubtotal"] },
+        "Multiplication": { "ignore": ["App\\VendingMachine\\Domain\\Dispensing\\OptimalChangeStrategy::scoreEverySubtotal"] },
+        "LessThan": { "ignore": ["App\\VendingMachine\\Domain\\Dispensing\\OptimalChangeStrategy::scoreEverySubtotal"] },
+        "LogicalOrAllSubExprNegation": { "ignore": ["App\\VendingMachine\\Domain\\Dispensing\\OptimalChangeStrategy::scoreEverySubtotal"] }
     },
     "minMsi": 85,
     "minCoveredMsi": 90

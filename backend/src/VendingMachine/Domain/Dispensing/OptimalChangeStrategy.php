@@ -59,6 +59,15 @@ final class OptimalChangeStrategy implements ChangeStrategy
      * answer used. Scoring alone would only prove a solution exists, and the
      * machine has to hand over actual coins.
      *
+     * A note for anyone changing the arithmetic here: with today's coin set the
+     * comparison below cannot be observed from outside — the coin count is
+     * monotone in how many of the current denomination are taken, so the last
+     * candidate is always the best one. It stops being true the moment a
+     * non-canonical denomination is added, which is exactly why the comparison
+     * is written rather than assumed. Several mutators are muted for this
+     * method in infection.json5 for that reason, with the expiry condition
+     * spelled out there.
+     *
      * @param list<CoinDenomination> $denominations
      *
      * @return array{fewestCoins: array<int, array<int, int>>, taken: array<int, array<int, int>>}
