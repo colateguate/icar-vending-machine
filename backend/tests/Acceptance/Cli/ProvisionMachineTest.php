@@ -4,14 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Acceptance\Cli;
 
-use App\Tests\Support\Doctrine\DoctrineTestEnvironment;
 use App\VendingMachine\Domain\Catalog\ProductSelector;
-use App\VendingMachine\Domain\Machine\MachineId;
-use App\VendingMachine\Domain\Machine\VendingMachine;
 use App\VendingMachine\Domain\Money\CoinDenomination;
-use App\VendingMachine\Infrastructure\Persistence\Doctrine\DoctrineVendingMachineRepository;
-use PHPUnit\Framework\TestCase;
-use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Console\Tester\CommandTester;
 
 /**
@@ -22,20 +16,8 @@ use Symfony\Component\Console\Tester\CommandTester;
  * database, through the real container, or the docker entrypoint that calls it
  * (ticket 13) will fail on a machine nobody has looked at yet.
  */
-final class ProvisionMachineTest extends TestCase
+final class ProvisionMachineTest extends CliTestCase
 {
-    private DoctrineTestEnvironment $database;
-
-    protected function setUp(): void
-    {
-        $this->database = DoctrineTestEnvironment::boot();
-    }
-
-    protected function tearDown(): void
-    {
-        $this->database->shutdown();
-    }
-
     public function test_it_stocks_the_machine_of_the_brief(): void
     {
         $command = $this->provision();
@@ -95,22 +77,6 @@ final class ProvisionMachineTest extends TestCase
 
     private function provision(): CommandTester
     {
-        $application = new Application($this->database->kernel());
-        $tester = new CommandTester($application->find('app:machine:provision'));
-        $tester->execute([]);
-
-        return $tester;
-    }
-
-    /**
-     * Read through a unit of work of its own. Asking the container's
-     * EntityManager — the one the command just used — would be asking its
-     * identity map, which answers from memory and would agree with itself
-     * whatever the database says.
-     */
-    private function storedMachine(): VendingMachine
-    {
-        return (new DoctrineVendingMachineRepository($this->database->anotherEntityManager()))
-            ->find(MachineId::fromString('lobby-01'));
+        return $this->runCommand('app:machine:provision');
     }
 }
