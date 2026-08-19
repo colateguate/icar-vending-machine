@@ -6,9 +6,17 @@ namespace App\VendingMachine\Domain\Machine;
 
 use App\Shared\Domain\AggregateRoot;
 use App\VendingMachine\Domain\Catalog\Inventory;
+use App\VendingMachine\Domain\Catalog\ProductSelector;
+use App\VendingMachine\Domain\Dispensing\ChangeStrategy;
+use App\VendingMachine\Domain\Dispensing\DispensedGoods;
 use App\VendingMachine\Domain\Event\CoinInserted;
 use App\VendingMachine\Domain\Event\CoinsRefunded;
 use App\VendingMachine\Domain\Event\MachineServiced;
+use App\VendingMachine\Domain\Event\ProductDispensed;
+use App\VendingMachine\Domain\Exception\CannotDispenseChange;
+use App\VendingMachine\Domain\Exception\InsufficientFunds;
+use App\VendingMachine\Domain\Exception\ProductOutOfStock;
+use App\VendingMachine\Domain\Exception\UnknownProductSelector;
 use App\VendingMachine\Domain\Money\CoinCollection;
 use App\VendingMachine\Domain\Money\CoinDenomination;
 use App\VendingMachine\Domain\Money\Money;
@@ -71,6 +79,90 @@ final class VendingMachine extends AggregateRoot
         }
 
         return $refunded;
+    }
+
+    /**
+     * The sale, and the only place where the machine's three moving parts have
+     * to agree at once.
+     *
+     * Everything is resolved and computed before anything is written: the
+     * product, the stock, the money, the change, and both of the new states
+     * that result. That ordering is not stylistic — a purchase that fails
+     * halfway would leave a can gone with no change paid, and there is no
+     * compensating action for a can that has already dropped. Every refusal
+     * therefore escapes before the first field moves, which is what lets the
+     * tests assert the machine is untouched.
+     *
+     * The stock is checked explicitly here even though dispensing would catch
+     * it again further down. That is about which refusal the customer hears:
+     * being told an item is sold out is more use than being told to insert more
+     * money for something they could not have bought anyway. A test asserts the
+     * change policy is never even consulted for a sale that cannot happen.
+     *
+     * The change comes out of the escrow *and* the reserve together, because
+     * the coins the customer just inserted are physically inside the machine.
+     * The pool is handed to the policy unfiltered: the port promises never to
+     * return a coin the machine cannot dispense, so that rule lives with the
+     * policy rather than being re-applied by every caller.
+     *
+     * The policy arrives as an argument rather than a constructor dependency —
+     * double dispatch. An aggregate has to be reconstructible from persistence
+     * without wiring services into it, and passing the policy per call means a
+     * test can swap it without touching the machine.
+     *
+     * @throws UnknownProductSelector
+     * @throws ProductOutOfStock
+     * @throws InsufficientFunds
+     * @throws CannotDispenseChange
+     */
+    public function purchase(ProductSelector $selector, ChangeStrategy $strategy): DispensedGoods
+    {
+        $product = $this->inventory->find($selector);
+
+        if ($product->isOutOfStock()) {
+            throw ProductOutOfStock::forSelector($selector->value());
+        }
+
+        $insertedAmount = $this->insertedAmount();
+        $price = $product->price();
+
+        if (!$insertedAmount->isGreaterThanOrEqualTo($price)) {
+            throw InsufficientFunds::needsMore($price->subtract($insertedAmount));
+        }
+
+        $availableCoins = $this->changeReserve->merge($this->insertedCoins);
+        $change = $strategy->selectCoins($insertedAmount->subtract($price), $availableCoins);
+
+        // Both new states are computed while the machine is still untouched.
+        // subtract() is the only check that the policy honoured its contract and
+        // handed back coins this machine actually holds, so it has to run here:
+        // doing it after the stock had already been decremented would leave a
+        // product gone and the till unchanged.
+        $remainingReserve = $availableCoins->subtract($change);
+        $remainingStock = $this->inventory->dispense($selector);
+
+        // Commit. Nothing below this line can fail.
+        $this->inventory = $remainingStock;
+        $this->changeReserve = $remainingReserve;
+        $this->insertedCoins = CoinCollection::empty();
+
+        $this->recordThat(new ProductDispensed($this->id, $selector, $price, $change));
+
+        return DispensedGoods::of($product, $change);
+    }
+
+    /**
+     * Drives the EXACT CHANGE ONLY lamp: the till holds nothing it is allowed
+     * to hand back, so overpaying can only end in a refused sale.
+     *
+     * Deliberately narrow. Predicting whether some future overpayment could be
+     * covered would need a change policy and a definition of the worst case the
+     * brief does not give; the refusal on the purchase itself stays the
+     * authoritative answer, and this is the warning that comes before it.
+     */
+    public function requiresExactChange(): bool
+    {
+        return $this->changeReserve->dispensableOnly()->isEmpty();
     }
 
     /**
