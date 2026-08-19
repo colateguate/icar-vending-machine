@@ -1,0 +1,36 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\VendingMachine\Application\Query\GetMachineState;
+
+use App\VendingMachine\Domain\Catalog\Product;
+use App\VendingMachine\Domain\Money\CoinCollection;
+use App\VendingMachine\Domain\Money\Money;
+
+/**
+ * Everything a client can know about the machine, and nothing it could use to
+ * change it.
+ *
+ * The read side deliberately does not hand back the aggregate. Doing so would
+ * put purchase() within reach of a controller, and the whole point of the
+ * command side is that changes go through it.
+ *
+ * It carries domain values rather than strings: formatting money for the wire
+ * is the edge's job, and doing it here would bake one delivery mechanism's
+ * conventions into the application layer.
+ */
+final readonly class MachineStateView
+{
+    /**
+     * @param list<Product> $products
+     */
+    public function __construct(
+        public array $products,
+        public CoinCollection $changeReserve,
+        public CoinCollection $insertedCoins,
+        public Money $insertedAmount,
+        public bool $exactChangeOnly,
+    ) {
+    }
+}

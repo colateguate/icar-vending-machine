@@ -1,0 +1,21 @@
+framework:
+    messenger:
+        default_bus: command.bus
+
+        buses:
+            # Where cross-cutting concerns are declared once for every use case
+            # instead of being repeated in each handler. The transaction
+            # middleware lands here with Doctrine (ticket 11), which is what
+            # makes "one command, one transaction, one aggregate" a property of
+            # the bus rather than a habit.
+            command.bus: ~
+
+            # A question nobody can answer is a wiring bug, so the default
+            # middleware stays strict.
+            query.bus: ~
+
+            # An event with no listeners is normal: announcing something is not
+            # the same as asking for it to be done.
+            event.bus:
+                default_middleware:
+                    allow_no_handlers: true
