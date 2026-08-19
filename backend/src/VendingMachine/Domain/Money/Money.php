@@ -24,11 +24,24 @@ final readonly class Money
 
     private const DECIMAL_FORMAT = '/^\d+(\.\d{1,2})?$/';
 
-    private function __construct(private int $amountInCents)
+    /**
+     * Deliberately not a promoted property: promotion makes the parameter and
+     * the property share one type, and the parameter is exactly where a
+     * negative amount is still possible. Declaring them apart lets the guard
+     * below turn "negatives are rejected" from a runtime check into something
+     * the analyser knows at every read of this value.
+     *
+     * @var int<0, max>
+     */
+    private int $amountInCents;
+
+    private function __construct(int $amountInCents)
     {
         if ($amountInCents < 0) {
             throw new InvalidArgumentException(\sprintf('A monetary amount cannot be negative, got %d cents.', $amountInCents));
         }
+
+        $this->amountInCents = $amountInCents;
     }
 
     public static function fromCents(int $cents): self
@@ -57,6 +70,13 @@ final readonly class Money
         return new self((int) $units * self::CENTS_PER_UNIT + (int) str_pad($decimals, 2, '0'));
     }
 
+    /**
+     * The constructor rejects negative amounts, so the range is part of the
+     * type rather than a comment: callers that index arrays or count coins by
+     * this value get that guarantee from the analyser.
+     *
+     * @return int<0, max>
+     */
     public function cents(): int
     {
         return $this->amountInCents;
