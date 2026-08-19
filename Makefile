@@ -2,10 +2,12 @@
 
 BACKEND := backend
 
-.PHONY: help up test test-unit test-application test-integration test-acceptance qa schema-check cs-fix test-mutation _ensure-backend
+.PHONY: help up down reset test test-unit test-application test-integration test-acceptance qa schema-check cs-fix test-mutation _ensure-backend
 
 help:
-	@echo "make up               - run the full stack via docker compose (ticket 13)"
+	@echo "make up               - build and run the stack (API on http://localhost:8000)"
+	@echo "make down             - stop it"
+	@echo "make reset            - stop it and throw the machine away"
 	@echo "make test             - run all backend test suites"
 	@echo "make test-unit        - unit suite only (fast domain feedback)"
 	@echo "make test-application - application suite only"
@@ -16,9 +18,19 @@ help:
 	@echo "make cs-fix           - apply code style fixes"
 	@echo "make test-mutation    - Infection on Domain + Application (needs pcov/xdebug)"
 
+# The whole thing, from a clone with no PHP installed: builds the image,
+# migrates, provisions the machine and serves the API on :8000.
 up:
-	@test -f docker-compose.yml || { echo "docker-compose.yml not defined yet (ticket 13)."; exit 1; }
 	docker compose up --build
+
+down:
+	docker compose down
+
+# Also throws the machine away. The next `make up` starts from the
+# catalogue of the brief again, which is the way to reset a machine that
+# an evaluator has emptied.
+reset:
+	docker compose down --volumes
 
 test: _ensure-backend
 	cd $(BACKEND) && vendor/bin/phpunit

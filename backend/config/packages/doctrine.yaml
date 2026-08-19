@@ -33,7 +33,27 @@ doctrine:
 when@prod:
     doctrine:
         orm:
-            auto_generate_proxy_classes: false
+            # Normally false in production, so that proxies are generated once
+            # when the cache is warmed instead of on demand. Here it stays true
+            # for a reason that is worth reading before changing it back.
+            #
+            # A Doctrine proxy is a subclass of the entity, and VendingMachine
+            # is final. Warming the cache therefore fails outright:
+            #
+            #   Cannot generate lazy ghost: class "...\VendingMachine" is final
+            #
+            # Proxies exist for lazy loading — an entity referenced but not yet
+            # fetched — and this model has no associations at all: find() always
+            # returns a whole aggregate and getReference() is never called. So
+            # nothing here ever needs a proxy, and pre-generating them buys
+            # nothing while costing the aggregate its final.
+            #
+            # Generating on demand means the demand never arrives. If this model
+            # ever grows an association the failure comes back, and the answer
+            # then is PHP 8.4 with `enable_native_lazy_objects` — which needs no
+            # subclass and is precisely the feature that makes final entities
+            # work — rather than opening the aggregate up.
+            auto_generate_proxy_classes: true
             proxy_dir: '%kernel.build_dir%/doctrine/orm/Proxies'
             query_cache_driver:
                 type: pool
