@@ -51,6 +51,30 @@ jobs:
           working-directory: backend
       - run: vendor/bin/deptrac analyse --config-file=deptrac.php --fail-on-uncovered --no-progress
 
+  schema:
+    name: Schema drift (migration vs mapping)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          # The suite and this job both talk to SQLite. It comes with the
+          # action by default; naming it means a change in that default fails
+          # here rather than in every other job at once.
+          extensions: pdo_sqlite
+          coverage: none
+      - uses: ramsey/composer-install@v3
+        with:
+          working-directory: backend
+      # The mapping and the migration have to describe the same table, and
+      # nothing else notices when they stop doing so: the tests build their
+      # schema from the mapping, so a migration that drifted would leave them
+      # green and break the first real deployment. Same command `make qa` runs.
+      - run: |
+          DATABASE_URL="sqlite:///%kernel.project_dir%/var/ci-schema.db" php bin/console doctrine:migrations:migrate --no-interaction --quiet
+          DATABASE_URL="sqlite:///%kernel.project_dir%/var/ci-schema.db" php bin/console doctrine:schema:validate
+
   tests:
     name: Tests (PHPUnit, 4 suites)
     runs-on: ubuntu-latest

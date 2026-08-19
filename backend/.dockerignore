@@ -1,0 +1,32 @@
+# What must never enter the build context. Two reasons, and the second is the
+# one that bites: a fat context is slow to send to the daemon, and a stale
+# vendor/ or var/ copied from the host would quietly override what the image
+# built for itself — the classic "works on my machine, in the container".
+
+# Installed by the image itself, for the right platform and without dev deps.
+vendor/
+
+# Host state: caches, logs, and the development SQLite database. The container
+# gets its own database in a named volume.
+var/
+
+# Local overrides. The container is configured by compose, not by these.
+.env.local
+.env.*.local
+
+# Tool caches that mean nothing inside the image.
+.phpunit.cache/
+.php-cs-fixer.cache
+
+# The runtime image serves the API; it does not run the suite, and its vendor/
+# has no dev dependencies to run it with.
+tests/
+phpunit.dist.xml
+infection.json5
+deptrac.php
+phpstan.neon.dist
+.php-cs-fixer.dist.php
+
+# Not part of the application.
+Dockerfile
+.dockerignore
