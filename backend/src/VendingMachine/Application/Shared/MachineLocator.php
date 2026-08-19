@@ -31,6 +31,28 @@ final readonly class MachineLocator
      */
     public function locate(): VendingMachine
     {
-        return $this->repository->find(MachineId::fromString($this->machineId));
+        return $this->repository->find($this->machineId());
+    }
+
+    public function machineId(): MachineId
+    {
+        return MachineId::fromString($this->machineId);
+    }
+
+    /**
+     * Only provisioning asks this. Every other use case wants the machine and
+     * should fail if there is none — a handler that quietly did nothing
+     * because the machine was missing would turn "not ready yet" into a silent
+     * success.
+     */
+    public function isProvisioned(): bool
+    {
+        try {
+            $this->locate();
+
+            return true;
+        } catch (MachineNotFound) {
+            return false;
+        }
     }
 }

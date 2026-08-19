@@ -45,6 +45,19 @@ use App\VendingMachine\Domain\Money\Money;
  */
 final class VendingMachine extends AggregateRoot
 {
+    /**
+     * The one field here that is not about vending anything.
+     *
+     * Two customers can press the same button at the same instant, and the
+     * cheapest honest answer is a counter the database checks on every write:
+     * the second writer finds the number moved and is told so instead of
+     * silently overwriting the first (ADR-0011). The domain never touches it —
+     * the adapter that does the writing owns it entirely — but Doctrine can
+     * only guard a field it can map, and the alternative was a second copy of
+     * this aggregate living in the infrastructure and free to drift from it.
+     */
+    private int $version = 1;
+
     private function __construct(
         private readonly MachineId $id,
         private Inventory $inventory,
@@ -209,5 +222,15 @@ final class VendingMachine extends AggregateRoot
     public function insertedAmount(): Money
     {
         return $this->insertedCoins->total();
+    }
+
+    /**
+     * How many times this machine has been written. Read by the persistence
+     * adapter and by the tests that prove a lost update is caught; nothing in
+     * the model has any business asking.
+     */
+    public function version(): int
+    {
+        return $this->version;
     }
 }

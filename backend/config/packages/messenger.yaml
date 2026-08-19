@@ -4,11 +4,19 @@ framework:
 
         buses:
             # Where cross-cutting concerns are declared once for every use case
-            # instead of being repeated in each handler. The transaction
-            # middleware lands here with Doctrine (ticket 11), which is what
-            # makes "one command, one transaction, one aggregate" a property of
-            # the bus rather than a habit.
-            command.bus: ~
+            # instead of being repeated in each handler.
+            #
+            # doctrine_transaction is the one that makes the bus worth having:
+            # it wraps every command in a transaction, so "one command, one
+            # transaction, one aggregate" is a property of the bus rather than
+            # something four handlers happen to do. No handler opens it, none
+            # commits it, and none can forget to. Logging, metrics and
+            # idempotency would go in the same seam without touching a use
+            # case. CommandTransactionTest asserts the behaviour rather than
+            # the presence of this line.
+            command.bus:
+                middleware:
+                    - doctrine_transaction
 
             # A question nobody can answer is a wiring bug, so the default
             # middleware stays strict.

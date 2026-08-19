@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    The mapping lives here, in configuration, and not in the class it maps.
+
+    This file is the whole reason the domain can be read without knowing a
+    database exists: VendingMachine.php has no attribute, no import and no
+    hint that Doctrine is in the project. Moving the mapping out is what makes
+    "the framework stays at the edge" a fact rather than an intention, and
+    Deptrac fails the build if the intention ever slips.
+
+    One table, one row per machine. The catalogue and both bags of coins are
+    columns of custom types rather than tables of their own: the aggregate is
+    the transactional boundary and is always read and written whole, and an
+    association to many products would need a Doctrine Collection inside the
+    domain. The trade is written down in ADR-0008.
+-->
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+
+    <entity name="App\VendingMachine\Domain\Machine\VendingMachine" table="vending_machines">
+
+        <!-- Assigned, never generated: whoever provisions the machine supplies
+             the identifier, which is why MachineId has no generate(). -->
+        <id name="id" type="machine_id">
+            <generator strategy="NONE"/>
+        </id>
+
+        <!-- Checked on every write. A second writer whose read is stale finds
+             the number moved and is refused (ADR-0011). -->
+        <field name="version" type="integer" version="true"/>
+
+        <field name="inventory" type="inventory" column="inventory"/>
+        <field name="changeReserve" type="coin_collection" column="change_reserve"/>
+        <field name="insertedCoins" type="coin_collection" column="inserted_coins"/>
+
+    </entity>
+
+</doctrine-mapping>

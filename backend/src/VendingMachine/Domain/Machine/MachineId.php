@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\VendingMachine\Domain\Machine;
 
 use InvalidArgumentException;
+use Stringable;
 
 /**
  * Identifies one physical machine.
@@ -14,7 +15,7 @@ use InvalidArgumentException;
  * test that builds a machine non-deterministic. Whoever provisions the machine
  * supplies the identifier.
  */
-final readonly class MachineId
+final readonly class MachineId implements Stringable
 {
     private const MAX_LENGTH = 64;
 
@@ -42,5 +43,19 @@ final readonly class MachineId
     public function equals(self $other): bool
     {
         return $this->value === $other->value;
+    }
+
+    /**
+     * An identifier that can spell itself. Nothing in the model needs this —
+     * value() is what the model calls — but anything that keys a map by an
+     * identity does, and that includes the persistence adapter's identity map.
+     *
+     * Stated as an interface rather than left as a bare magic method so it
+     * reads as part of what a MachineId is, and so a reader is not left
+     * wondering who calls it.
+     */
+    public function __toString(): string
+    {
+        return $this->value;
     }
 }
