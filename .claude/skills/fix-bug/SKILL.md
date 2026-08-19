@@ -73,7 +73,7 @@ Hallazgos laterales → sugiere `/create-ticket` con `Origen: Detectado durante 
 
 ## Cierre
 
-Mueve el ticket a `.claude/completed_tasks/` si venía de ticket. Commit atómico Conventional (`fix(domain): ...`) en la rama de Fase 0. **Antes de push: `review-before-push`**; con PASS, `git push -u origin <rama>` y el usuario abre el PR hacia `release/backend`. Informe numerado: (1) clasificación y causa raíz en una línea, (2) test añadido y a qué nivel, (3) diff mínimo (archivos:líneas), (4) evidencia de Fase 4 (ambas), (5) regresión con counts, (6) hallazgos laterales y lo que quedó **sin** hacer, explícitamente.
+**Revisa `documentation/`** antes de cerrar: si el bug nacía de algo que esos apuntes explican mal, o si ya no describen el código, corrígelo — una doc que contradice al código es peor que no tenerla. Y si la causa raíz fue una trampa que costó descubrir, cuéntala: son las que más valen. Mueve el ticket a `.claude/completed_tasks/` si venía de ticket. Commit atómico Conventional (`fix(domain): ...`) en la rama de Fase 0. **Antes de push: `review-before-push`**; con PASS, `git push -u origin <rama>` y el usuario abre el PR hacia `release/backend`. Informe numerado: (1) clasificación y causa raíz en una línea, (2) test añadido y a qué nivel, (3) diff mínimo (archivos:líneas), (4) evidencia de Fase 4 (ambas), (5) regresión con counts, (6) hallazgos laterales y lo que quedó **sin** hacer, explícitamente.
 
 ## Red flags — STOP
 

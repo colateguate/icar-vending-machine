@@ -4,6 +4,7 @@
 El segundo adaptador del puerto de persistencia: la demostración tangible de que la arquitectura paga. Mapping en XML para que el dominio siga sin una sola anotación de infraestructura; tipos DBAL propios para que los VOs sobrevivan el round-trip sin setters ni constructores públicos vacíos. El contract test abstracto que corre contra AMBOS adaptadores responde a "¿cómo sabes que tu doble InMemory no miente?" — posiblemente el test de mayor señal del proyecto.
 
 ## Criterios de aceptación
+- [ ] **Añadir `doctrine_transaction` al `command.bus`** en `config/packages/messenger.yaml`. Se dejó fuera en el ticket 09 porque ese middleware exige Doctrine instalado. Es la deuda más importante de este ticket: **ese middleware ES el argumento que justifica tener un bus** — declara "un comando = una transacción = un agregado" una sola vez para todos los casos de uso. Sin él, el bus es ceremonia. Añade además un test que compruebe que una excepción a mitad de un handler no deja escritura parcial
 - [ ] Mapping XML en `backend/config/doctrine/` (`type: xml`, `is_bundle: false`); `grep -r "Doctrine" backend/src/VendingMachine/Domain` → 0 hits
 - [ ] Tipos DBAL: MoneyType (int), CoinCollectionType (JSON), ProductSelectorType, MachineIdType
 - [ ] `DoctrineVendingMachineRepository` implementa el puerto; migración Doctrine inicial (no schema:create)

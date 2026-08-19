@@ -9,6 +9,8 @@ El borde HTTP: cinco controladores invocables que deserializan, despachan al bus
 - [ ] `ErrorCatalog` (FQCN → status+code): UnsupportedCoin→422, **InvalidMoneyAmount→422**, **InvalidProductSelector→422**, UnknownProductSelector→404, ProductOutOfStock→409, InsufficientFunds→409, CannotDispenseChange→409 exact_change_required, MachineNotFound→503, resto→500 con detail suprimido
 - [ ] **Test de exhaustividad del catálogo**: recorrer todas las implementaciones de `VendingMachineError` del dominio y fallar si alguna no está catalogada. Sin él, cada excepción de dominio nueva se degrada en silencio a 500 y culpa al servidor de un error del cliente
 - [ ] `DomainExceptionSubscriber` produce application/problem+json; JSON malformado → 400 invalid_request
+- [ ] **BLOQUEANTE — validación de forma en el borde.** Los comandos llevan primitivas y su PHPDoc declara la forma exacta; comprobar que el JSON la cumple es trabajo de Delivery. Cada controlador mapea el request a un DTO tipado (`ServiceMachineRequest`, etc.) y **rechaza con 422 antes de construir el comando**. Especialmente `PUT /api/machine/service`: su payload lleva arrays anidados (`products[].selector/name/price/count`, `changeReserve` como mapa céntimos→cantidad) y hoy un campo ausente llegaría al handler y reventaría con `TypeError` → 500 culpando al servidor de un error del cliente
+- [ ] Tests que lo demuestren: campo ausente, campo con tipo equivocado (`count: "10"`), array anidado que no es array. Todos deben dar **422 con problem+json**, ninguno 500
 - [ ] `ChallengeExamplesTest` de aceptación con los 3 ejemplos literales del enunciado
 - [ ] Suite `backend/tests/Acceptance/Http/` cubre cada endpoint + `ProblemDetailsContractTest`
 - [ ] nelmio/cors configurado para el frontend local
