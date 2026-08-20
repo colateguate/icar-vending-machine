@@ -25,32 +25,37 @@ export function useMachine() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
+  /**
+   * The panel can be closed before the machine answers, so the read is dropped
+   * rather than merely ignored. The signal is also what makes the cleanup
+   * checkable from outside: a flag closed over by this effect would be correct
+   * and invisible, and a guard no test can fail is a guard nobody is watching.
+   *
+   * The two `aborted` checks are not defensive noise. StrictMode runs every
+   * effect twice in development — mount, cleanup, mount — so this aborts its own
+   * first request while the panel is still on screen, and the rejection that
+   * comes back is ours. Reporting it would announce an unreachable machine on
+   * every page load.
+   */
   useEffect(() => {
-    let ignore = false;
+    const controller = new AbortController();
 
-    getState()
+    getState(controller.signal)
       .then(({ machine: found }) => {
-        if (!ignore) {
-          setMachine(found);
-        }
+        setMachine(found);
       })
       .catch((failure) => {
-        if (!ignore) {
+        if (!controller.signal.aborted) {
           setError(failure);
         }
       })
       .finally(() => {
-        if (!ignore) {
+        if (!controller.signal.aborted) {
           setLoading(false);
         }
       });
 
-    // The panel can be closed before the machine answers. Nothing here can be
-    // cancelled — the API client takes no abort signal — so the guard is a flag
-    // that makes the late answer arrive to nobody.
-    return () => {
-      ignore = true;
-    };
+    return () => controller.abort();
   }, []);
 
   /**

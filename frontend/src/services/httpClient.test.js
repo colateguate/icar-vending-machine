@@ -63,7 +63,7 @@ describe('request', () => {
     it('sends a body as JSON and says so in the headers', async () => {
       fetch.mockResolvedValue(jsonResponse(200, machineState));
 
-      await request('POST', '/machine/coins', { coin: '0.25' });
+      await request('POST', '/machine/coins', { body: { coin: '0.25' } });
 
       const [, init] = fetch.mock.calls[0];
       expect(init.method).toBe('POST');
@@ -95,11 +95,43 @@ describe('request', () => {
     });
   });
 
+  describe('when the caller withdraws the question', () => {
+    it('hands the signal straight to fetch, so the request can actually be dropped', async () => {
+      fetch.mockResolvedValue(jsonResponse(200, machineState));
+      const { signal } = new AbortController();
+
+      await request('GET', '/machine', { signal });
+
+      const [, init] = fetch.mock.calls[0];
+      expect(init.signal).toBe(signal);
+    });
+
+    /**
+     * An abort is not a failure: nobody was unreachable, we changed our mind.
+     * Wrapping it in TransportFailure would tell the caller the machine could
+     * not be reached, which is both untrue and the sort of untruth that ends up
+     * on screen.
+     */
+    it('lets an abort through as itself rather than dressing it as a transport failure', async () => {
+      const controller = new AbortController();
+      const aborted = new DOMException('This operation was aborted', 'AbortError');
+      controller.abort();
+      fetch.mockRejectedValue(aborted);
+
+      const thrown = await request('GET', '/machine', { signal: controller.signal }).catch(
+        (error) => error,
+      );
+
+      expect(thrown).toBe(aborted);
+      expect(thrown).not.toBeInstanceOf(TransportFailure);
+    });
+  });
+
   describe('when the machine refuses', () => {
     it('throws the problem the API described, with its code and extensions', async () => {
       fetch.mockResolvedValue(jsonResponse(409, insufficientFunds, 'application/problem+json'));
 
-      const thrown = await request('POST', '/machine/purchases', { selector: 'JUICE' }).catch(
+      const thrown = await request('POST', '/machine/purchases', { body: { selector: 'JUICE' } }).catch(
         (error) => error,
       );
 

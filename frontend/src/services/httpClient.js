@@ -37,7 +37,13 @@ async function decode(response) {
   }
 }
 
-export async function request(method, path, body) {
+/**
+ * What varies between calls beyond the verb and the path goes in one bag, so a
+ * caller that wants only a signal does not have to name an absent body to reach
+ * it. `request('GET', '/machine', undefined, signal)` was the alternative, and
+ * the `undefined` in it means nothing except "count the arguments".
+ */
+export async function request(method, path, { body, signal } = {}) {
   const url = `${base}${path}`;
   const hasBody = body !== undefined;
 
@@ -48,8 +54,17 @@ export async function request(method, path, body) {
       method,
       headers: hasBody ? { 'Content-Type': 'application/json' } : {},
       body: hasBody ? JSON.stringify(body) : undefined,
+      signal,
     });
   } catch (cause) {
+    // An abort is not a failure. Nobody was unreachable; we withdrew the
+    // question. Wrapping it would hand the caller a TransportFailure saying the
+    // machine could not be reached — untrue, and the kind of untruth that ends
+    // up on a screen in front of someone.
+    if (signal?.aborted) {
+      throw cause;
+    }
+
     throw new TransportFailure(`The machine could not be reached (${method} ${url}).`, { cause });
   }
 
