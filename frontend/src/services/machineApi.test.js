@@ -39,7 +39,25 @@ describe('getState', () => {
     request.mockResolvedValue(machineState);
 
     await expect(getState()).resolves.toEqual(machineState);
-    expect(request).toHaveBeenCalledWith('GET', '/machine');
+  });
+
+  /**
+   * Only the read carries a signal. That the four writing calls do not is pinned
+   * by their own tests without a word about signals: `toHaveBeenCalledWith`
+   * compares the options bag by equality, so handing a real signal to any of them
+   * turns that call's test red — verified by doing it rather than assumed.
+   *
+   * A literal `signal: undefined` does slip through, because equality treats an
+   * undefined property as an absent one. That is fine: it is a key that does
+   * nothing, and `fetch` cannot tell those two apart either.
+   */
+  it('asks the machine endpoint, passing on any signal it was given', async () => {
+    request.mockResolvedValue(machineState);
+    const { signal } = new AbortController();
+
+    await getState(signal);
+
+    expect(request).toHaveBeenCalledWith('GET', '/machine', { signal });
   });
 
   it('surfaces the problem when no machine has been provisioned', async () => {
@@ -55,7 +73,7 @@ describe('insertCoin', () => {
 
     await insertCoin('0.25');
 
-    expect(request).toHaveBeenCalledWith('POST', '/machine/coins', { coin: '0.25' });
+    expect(request).toHaveBeenCalledWith('POST', '/machine/coins', { body: { coin: '0.25' } });
   });
 
   it('surfaces the problem when the machine does not take that coin', async () => {
@@ -87,7 +105,7 @@ describe('purchase', () => {
 
     await purchase('JUICE');
 
-    expect(request).toHaveBeenCalledWith('POST', '/machine/purchases', { selector: 'JUICE' });
+    expect(request).toHaveBeenCalledWith('POST', '/machine/purchases', { body: { selector: 'JUICE' } });
   });
 
   /**
@@ -114,7 +132,7 @@ describe('service', () => {
 
     await service(products, changeReserve);
 
-    expect(request).toHaveBeenCalledWith('PUT', '/machine/service', { products, changeReserve });
+    expect(request).toHaveBeenCalledWith('PUT', '/machine/service', { body: { products, changeReserve } });
   });
 
   it('surfaces the field at fault when the payload is not valid input', async () => {

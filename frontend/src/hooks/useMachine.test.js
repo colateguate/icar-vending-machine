@@ -1,3 +1,4 @@
+import { StrictMode } from 'react';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -31,6 +32,34 @@ const withAQuarterIn = {
 
 const refusal = (code, extensions = {}) => Object.assign(new Error(code), { code, extensions });
 
+/**
+ * What a real request does when its signal is pulled: it rejects, rather than
+ * quietly never settling. `mockResolvedValue` cannot express that, and the
+ * difference is the whole point of the cancellation tests.
+ *
+ * The microtask rejects rather than merely declining to resolve, so a signal
+ * that was already aborted before the call still settles. Nothing here passes
+ * one — but a fake that hangs where the real thing rejects fails by timeout
+ * instead of by assertion, and a fake easier to satisfy than reality is a fake
+ * that lets something through.
+ */
+const aborted = () => new DOMException('This operation was aborted', 'AbortError');
+
+const answersUnlessAborted = (payload) => (signal) =>
+  new Promise((resolve, reject) => {
+    signal.addEventListener('abort', () => reject(aborted()));
+
+    queueMicrotask(() => {
+      if (signal.aborted) {
+        reject(aborted());
+
+        return;
+      }
+
+      resolve(payload);
+    });
+  });
+
 const loaded = async () => {
   getState.mockResolvedValue({ machine: idle });
 
@@ -51,6 +80,41 @@ describe('useMachine', () => {
 
     expect(result.current.machine).toEqual(idle);
     expect(getState).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * The test that could not be written before the read became cancellable. The
+   * old guard was a flag closed over by the effect: correct, invisible, and
+   * impossible to fail. A signal is something the caller handed in, so the
+   * caller can ask afterwards what became of it.
+   */
+  it('withdraws the question when the panel closes', async () => {
+    const { unmount } = await loaded();
+    const [signal] = getState.mock.calls[0];
+
+    expect(signal.aborted).toBe(false);
+
+    unmount();
+
+    expect(signal.aborted).toBe(true);
+  });
+
+  /**
+   * StrictMode runs every effect twice in development — mount, cleanup, mount —
+   * so the panel aborts its own first request while it is still on screen and
+   * gets the rejection back with nobody unmounted to absorb it. Reporting that
+   * would put "Machine unreachable" on a machine that answered perfectly well,
+   * on every single page load in development.
+   */
+  it('does not report a failure when it was the one who cancelled', async () => {
+    getState.mockImplementation(answersUnlessAborted({ machine: idle }));
+
+    const { result } = renderHook(() => useMachine(), { wrapper: StrictMode });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.error).toBeNull();
+    expect(result.current.machine).toEqual(idle);
   });
 
   it('surfaces the refusal when there is no machine to show', async () => {

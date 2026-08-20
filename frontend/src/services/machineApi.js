@@ -13,13 +13,19 @@ import { request } from './httpClient';
  * Amounts are decimal strings on the way in and on the way out. Nothing here
  * converts one to a number, because JavaScript only offers the float that
  * ADR-0004 refuses.
+ *
+ * Only the read is cancellable, and that asymmetry is deliberate. Dropping a
+ * question you no longer need the answer to is free; dropping a request that
+ * changes the machine is not, because an aborted purchase leaves the caller
+ * unable to say whether a can came out. The four writing calls therefore take
+ * no signal, and there is nothing to pass them one with.
  */
-export function getState() {
-  return request('GET', '/machine');
+export function getState(signal) {
+  return request('GET', '/machine', { signal });
 }
 
 export function insertCoin(coin) {
-  return request('POST', '/machine/coins', { coin });
+  return request('POST', '/machine/coins', { body: { coin } });
 }
 
 /** The RETURN-COIN button. */
@@ -28,10 +34,10 @@ export function returnCoins() {
 }
 
 export function purchase(selector) {
-  return request('POST', '/machine/purchases', { selector });
+  return request('POST', '/machine/purchases', { body: { selector } });
 }
 
 /** A service visit sets what the machine stocks and holds, so it sends both. */
 export function service(products, changeReserve) {
-  return request('PUT', '/machine/service', { products, changeReserve });
+  return request('PUT', '/machine/service', { body: { products, changeReserve } });
 }
