@@ -3,12 +3,64 @@ name: CI
 on:
   push:
   pull_request:
+  # A pipeline triggered only by pushes answers "did this change break
+  # anything". The audit job below also has to answer "did the world break
+  # us", and the world does not push commits: an advisory is published
+  # against a dependency nobody has touched in weeks, and a push-only
+  # pipeline would report that risk at the moment least likely to be
+  # looking. Weekly, and only on the default branch, which is where the
+  # deliverable lives.
+  #
+  # The whole workflow runs rather than the audit alone. That is nearly free
+  # and buys a second thing: the runner image and the Composer that setup-php
+  # installs both move underneath us, so a green Monday is also evidence that
+  # this still builds on a toolchain nobody pinned.
+  #
+  # GitHub disables a schedule after 60 days without activity in the
+  # repository, so a silent Monday is not proof of anything on its own.
+  schedule:
+    - cron: '0 6 * * 1'
 
 defaults:
   run:
     working-directory: backend
 
 jobs:
+  dependencies:
+    name: Dependency advisories (composer audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+      # No composer-install step: --locked audits composer.lock, which is
+      # what gets deployed, rather than whatever the installer would resolve
+      # today. That also makes this the cheapest job in the pipeline, since
+      # it never downloads a package.
+      #
+      # Dev dependencies are audited too. "It never reaches the runtime" is
+      # true — the image installs with --no-dev — and it is not the same as
+      # "it does not matter": these run in CI, against a checkout, with a
+      # token. The cost of that choice is real and is accepted knowingly: an
+      # advisory against PHPUnit will block delivery of code that does not
+      # use it, and --no-dev is the escape hatch if that day ever arrives.
+      #
+      # --abandoned is passed rather than inherited. Its default changed
+      # between Composer versions (report in 2.6, fail since 2.7) and
+      # setup-php installs whatever is newest, so leaving it out means a
+      # package being abandoned could redden a security job for a reason
+      # that is not security. Nothing in composer.lock is abandoned today;
+      # this is preventive and costs one flag.
+      #
+      # Known limitation, stated rather than hidden: this is the only job
+      # whose result depends on an external service, and "Packagist did not
+      # answer" arrives looking like "the answer was bad". The schedule is
+      # what separates them in practice — a transient failure is green again
+      # next Monday, an advisory is still there.
+      - run: composer audit --locked --abandoned=report
+
   code-style:
     name: Code style (php-cs-fixer)
     runs-on: ubuntu-latest
