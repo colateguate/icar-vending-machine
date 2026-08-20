@@ -2,9 +2,18 @@
 # documents go to be believed without being checked — an executable one.
 #
 # backend/tests/Support/OpenApi/OpenApiContract.php validates every response
-# the acceptance suite produces against this file. The spec cannot drift from
-# the API without the build going red, and the examples below are not written
-# from memory: each was captured from a real run of that suite.
+# the acceptance suite produces against this file, so the spec cannot drift
+# from the API without the build going red.
+#
+# The examples below are not written from memory either, and that is enforced
+# rather than promised: PublishedExamplesTest provokes the exact situation
+# each one describes and asserts that the whole document came back. An example
+# that stops being a response this API gives fails the build the same way a
+# broken schema would.
+#
+# Every example is published under a name, and no name is used twice for two
+# different examples — that is what lets a test address one and what stops a
+# second example hiding behind the first.
 #
 # Two deliberate omissions, both of which make the gate sharper rather than
 # the document weaker:
@@ -201,7 +210,7 @@ paths:
                     status: 422
                     detail: The machine does not accept coins of 2 cents.
                     code: unsupported_coin
-                invalidMoneyAmount:
+                coinThatIsNotAnAmount:
                   summary: Not a decimal amount
                   value:
                     type: /problems/invalid-money-amount
@@ -209,7 +218,7 @@ paths:
                     status: 422
                     detail: 'Expected a positive decimal amount with at most two decimals, got "a lot".'
                     code: invalid_money_amount
-                invalidRequestPayload:
+                coinThatIsNotAString:
                   summary: A number where the contract says string — the mistake money is a string to prevent
                   value:
                     type: /problems/invalid-request-payload
@@ -394,7 +403,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
               examples:
-                invalidProductSelector:
+                selectorInLowercase:
                   summary: Lowercase is not a selector
                   value:
                     type: /problems/invalid-product-selector
@@ -402,7 +411,7 @@ paths:
                     status: 422
                     detail: 'A product selector must match /^[A-Z][A-Z0-9_-]{0,31}$/, got "water".'
                     code: invalid_product_selector
-                missingField:
+                missingSelector:
                   summary: The field is absent, and the document names it
                   value:
                     type: /problems/invalid-request-payload
@@ -513,7 +522,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
               examples:
-                missingField:
+                missingProducts:
                   summary: A required field is absent
                   value:
                     type: /problems/invalid-request-payload
@@ -522,7 +531,7 @@ paths:
                     detail: 'The field "products" is required.'
                     code: invalid_request_payload
                     field: products
-                invalidProductSelector:
+                selectorWithASpace:
                   summary: A selector with a space in it
                   value:
                     type: /problems/invalid-product-selector
@@ -530,7 +539,7 @@ paths:
                     status: 422
                     detail: 'A product selector must match /^[A-Z][A-Z0-9_-]{0,31}$/, got "iced tea".'
                     code: invalid_product_selector
-                invalidMoneyAmount:
+                priceThatIsNotAnAmount:
                   summary: A price that is not an amount
                   value:
                     type: /problems/invalid-money-amount
@@ -758,12 +767,15 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
-          example:
-            type: /problems/machine-not-provisioned
-            title: Machine not provisioned
-            status: 503
-            detail: 'No machine has been provisioned under the id "lobby-01".'
-            code: machine_not_provisioned
+          examples:
+            notProvisioned:
+              summary: Nothing was named wrong; this deployment has no machine
+              value:
+                type: /problems/machine-not-provisioned
+                title: Machine not provisioned
+                status: 503
+                detail: 'No machine has been provisioned under the id "lobby-01".'
+                code: machine_not_provisioned
 
     MalformedJson:
       description: The request body is not JSON at all, so no field-level complaint is possible.
@@ -771,9 +783,12 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
-          example:
-            type: /problems/malformed-json
-            title: Malformed JSON body
-            status: 400
-            detail: The request body is not valid JSON.
-            code: malformed_json
+          examples:
+            bodyThatIsNotJson:
+              summary: The bytes never parsed, so no field can be blamed
+              value:
+                type: /problems/malformed-json
+                title: Malformed JSON body
+                status: 400
+                detail: The request body is not valid JSON.
+                code: malformed_json

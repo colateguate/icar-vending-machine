@@ -14,7 +14,7 @@ So the question is not "which format" but **what keeps the document honest**.
 ## Decision drivers
 
 - Money on the wire is a decimal string, never a JSON number (ADR-0004). That is the single most important thing a client must get right, and the one a hand-kept document is most likely to get subtly wrong once and then keep wrong.
-- The error contract is eleven codes across six status codes (ADR-0012). A client branches on `code`; a document that omits one leaves the client meeting an error it was never told about.
+- The error contract is eleven codes across five status codes, plus the 500 that is the absence of a contract rather than part of one (ADR-0012). A client branches on `code`; a document that omits one leaves the client meeting an error it was never told about.
 - The frontend tickets consume this API. A contract they can read is worth more to them than prose.
 - Whatever is published has to be importable by the tools people actually use — Postman, Insomnia, Bruno, Swagger UI — without a second artifact to maintain.
 - The repository already prefers gates over agreements: Deptrac for layering, PHPStan for types, a contract test for the repository port. A document with no gate would be the one unchecked claim in the project.
@@ -31,13 +31,19 @@ So the question is not "which format" but **what keeps the document honest**.
 
 **Chosen: option 1.** `docs/openapi.yaml` is written by hand, and `tests/Support/OpenApi/OpenApiContract.php` validates every response the acceptance suite produces against it. Both gates are described below. The examples in the document were captured from real runs of that suite rather than typed from memory.
 
-### The two gates, and why one is not enough
+### The gates, and why one is not enough
 
-**Every response is validated.** `ApiTestCase` sends its request, then checks the response against the document: the status must be declared for that operation, the content type must be one the operation offers, and the body must satisfy the schema. Forty-four test methods across eight classes get this for free, without a single new HTTP call — eighty-nine responses checked, and the acceptance suite's assertion count says so, because the check is an assertion rather than a bare `fail()`. A gate that registers nothing when it passes leaves no trace of having run, and "the suite is green" stops being evidence that anything was compared.
+**Every response is validated.** `ApiTestCase` sends its request, then checks the response against the document: the status must be declared for that operation, the content type must be one the operation offers, and the body must satisfy the schema. Forty-five test methods across nine classes get this for free, without a single new HTTP call — a hundred and seven responses checked, and the acceptance suite's assertion count says so, because the check is an assertion rather than a bare `fail()`. A gate that registers nothing when it passes leaves no trace of having run, and "the suite is green" stops being evidence that anything was compared.
 
 Every response schema sets `additionalProperties: false`, because a schema without it only notices fields that disappear — which is half of drift.
 
 **Every catalogued failure must be documented.** The first gate can only check the failures the suite happens to provoke, and `concurrent_modification` is provoked by two connections racing — an integration-level setup that acceptance never reaches. Left to the first gate alone, that error could stay undocumented forever with the whole suite green. So `OpenApiErrorCoverageTest` walks the error catalog and fails if a `(status, code)` pair is missing from the document — and fails the other way too, if the document promises a failure the catalog can no longer produce.
+
+**A third gate was added on 2026-08-20, because two were not enough.** The section above is left as it was written, since what it missed is the useful part: it treats "the document declares this failure" as the thing worth guarding, and never asks whether what the document *shows* is real. The first gate validates against the schema, and an invented example satisfies a schema exactly as well as a captured one. The second reads `status` and `code` out of the examples — two of five members — so `type`, `title` and `detail` were compared against nothing at all, and only two of the fifteen published details appeared anywhere in the suite.
+
+That gap had already produced a wrong artifact: the `concurrent_modification` example shipped a whole release with a title and a detail the API has never returned, and it was found by accident. `PublishedExamplesTest` now provokes the exact situation each example describes and asserts the whole document came back, which makes the file's opening claim — that every example was captured from a real run — executable rather than a promise. Its list of examples is derived from the document while its scenarios are hand-written: deriving the list means a sixteenth example cannot arrive without the suite demanding a scenario for it, and deriving the expectations would assert that the document agrees with itself.
+
+The cost is stated rather than glossed: fifteen acceptance tests whose setups largely repeat setups elsewhere in the suite. They ask a different question of the same situations — those tests assert what the machine does, these assert that the published document is real — but the duplication is real and would be the first thing to reconsider if these setups ever start drifting apart.
 
 ### Why not generate it from the code
 
