@@ -1,9 +1,9 @@
 /**
  * The single screen of the panel.
  *
- * Today it is scaffolding: ticket 16 gives it a way to reach the API and
- * ticket 17 fills it with the coin buttons, the product grid and the service
- * drawer. What is already true is its shape — a page composes and renders, and
+ * Today it is scaffolding: ticket 16 gives it a way to reach the API, ticket 17
+ * fills it with the coin buttons and the product grid, and ticket 17b adds the
+ * service drawer. What is already true is its shape — a page composes and renders, and
  * learns the machine's state from a hook rather than from the network.
  * `CLAUDE.md` § "Frontend architecture" has the table this obeys.
  */
