@@ -34,6 +34,11 @@ final class OpenApiContract
 
     private static ?ResponseValidator $validator = null;
 
+    /**
+     * @var array<string, array{status: int, code: string, value: array<array-key, mixed>}>|null
+     */
+    private static ?array $examples = null;
+
     public static function specPath(): string
     {
         return \dirname(__DIR__, 4).'/docs/openapi.yaml';
@@ -42,16 +47,93 @@ final class OpenApiContract
     /**
      * Every failure the contract documents, as the pair a client branches on.
      *
-     * Read out of the examples rather than out of the response declarations,
-     * because a status with a schema and no example says "something can go
-     * wrong here" without saying what — and "what" is the whole reason a
-     * caller reads an error contract.
+     * Deduplicated: several examples can answer with the same status and code
+     * and differ only in which field they blame, and a client branching on
+     * `code` sees one failure there rather than three.
      *
      * @return list<array{status: int, code: string}>
      */
     public static function documentedProblems(): array
     {
         $problems = [];
+
+        foreach (self::documentedExamples() as $example) {
+            $problems[$example['status'].' '.$example['code']] = [
+                'status' => $example['status'],
+                'code' => $example['code'],
+            ];
+        }
+
+        ksort($problems);
+
+        return array_values($problems);
+    }
+
+    /**
+     * The name of every distinct problem+json example the document publishes.
+     *
+     * @return list<string>
+     */
+    public static function publishedProblemExamples(): array
+    {
+        return array_keys(self::documentedExamples());
+    }
+
+    /**
+     * The whole of one published example, addressed by the name it is
+     * published under, so a test can compare it against a real response
+     * instead of against two of its five members.
+     *
+     * @return array<array-key, mixed>
+     */
+    public static function exampleOf(string $name): array
+    {
+        $examples = self::documentedExamples();
+
+        Assert::assertArrayHasKey($name, $examples, \sprintf(
+            'docs/openapi.yaml publishes no problem+json example named "%s". It publishes: %s.',
+            $name,
+            implode(', ', array_keys($examples)) ?: 'none at all',
+        ));
+
+        return $examples[$name]['value'];
+    }
+
+    /**
+     * Every distinct problem+json example the document publishes, whole,
+     * keyed by its published name.
+     *
+     * Read out of the examples rather than out of the response declarations,
+     * because a status with a schema and no example says "something can go
+     * wrong here" without saying what — and "what" is the whole reason a
+     * caller reads an error contract.
+     *
+     * **Keyed by name and not by status and code**, which was the first
+     * version and was wrong in a way that hid work: four codes are documented
+     * by more than one example — a missing field is a different example on
+     * each endpoint — so keying by the pair collapsed fifteen examples into
+     * eleven and left four of them checked by nothing at all. A gate that
+     * quietly covers less than it claims is the failure this file exists to
+     * prevent.
+     *
+     * One example may legitimately be published under one name by several
+     * operations, and those collapse into one. What must never happen is one
+     * name carrying two different examples, because then the name identifies
+     * neither — so that fails here instead of becoming a silent gap again.
+     *
+     * Resolved once: the walk parses the whole document and asserts as it
+     * goes, and repeating it per call would bury the suite's assertion count
+     * under hundreds of comparisons of the file with itself.
+     *
+     * @return array<string, array{status: int, code: string, value: array<array-key, mixed>}>
+     */
+    private static function documentedExamples(): array
+    {
+        if (null !== self::$examples) {
+            return self::$examples;
+        }
+
+        $examples = [];
 
         foreach (self::validator()->getSchema()->paths as $pathItem) {
             foreach ($pathItem->getOperations() as $operation) {
@@ -70,40 +152,54 @@ final class OpenApiContract
                         continue;
                     }
 
-                    foreach (self::examplesOf($mediaType) as $example) {
-                        $code = $example['code'] ?? null;
+                    foreach (self::examplesOf($mediaType) as $name => $value) {
+                        $code = $value['code'] ?? null;
 
-                        if (\is_string($code)) {
-                            $problems[$status.' '.$code] = ['status' => (int) $status, 'code' => $code];
+                        if (!\is_string($code)) {
+                            continue;
                         }
+
+                        $entry = ['status' => (int) $status, 'code' => $code, 'value' => $value];
+
+                        Assert::assertSame(
+                            $examples[$name] ?? $entry,
+                            $entry,
+                            \sprintf('docs/openapi.yaml publishes two different examples under the name "%s", so the name identifies neither.', $name),
+                        );
+
+                        $examples[$name] = $entry;
                     }
                 }
             }
         }
 
-        ksort($problems);
+        ksort($examples);
 
-        return array_values($problems);
+        return self::$examples = $examples;
     }
 
     /**
-     * A media type may carry one example or a named set of them, and this API
-     * uses both: one where a status means a single thing, several where the
-     * same status answers several different refusals.
+     * The examples one media type carries, by name.
      *
-     * @return list<array<array-key, mixed>>
+     * OpenAPI lets a media type carry a single nameless `example` as well as a
+     * named set, and a problem example without a name is refused here rather
+     * than skipped: this gate addresses examples by name, so an anonymous one
+     * would be checked by nothing while looking exactly like one that is.
+     *
+     * @return array<string, array<array-key, mixed>>
      */
     private static function examplesOf(MediaType $mediaType): array
     {
+        Assert::assertNull(
+            $mediaType->example,
+            'a problem+json example in docs/openapi.yaml has no name. Publish it under "examples:" with one, so that something can be said to check it.',
+        );
+
         $values = [];
 
-        if (\is_array($mediaType->example)) {
-            $values[] = $mediaType->example;
-        }
-
-        foreach ($mediaType->examples as $example) {
-            if ($example instanceof Example && \is_array($example->value)) {
-                $values[] = $example->value;
+        foreach ($mediaType->examples as $name => $example) {
+            if (\is_string($name) && $example instanceof Example && \is_array($example->value)) {
+                $values[$name] = $example->value;
             }
         }
 
