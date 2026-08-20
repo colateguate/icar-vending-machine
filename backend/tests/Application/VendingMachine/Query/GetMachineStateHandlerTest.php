@@ -52,6 +52,42 @@ final class GetMachineStateHandlerTest extends TestCase
         self::assertSame(1, $view->insertedCoins->countOf(CoinDenomination::TEN_CENTS));
     }
 
+    /**
+     * The four are written out here rather than derived from CoinDenomination.
+     * A test that builds its expectation from the same enum the code reads
+     * asserts that the enum equals itself; this states what the machine takes.
+     */
+    public function test_it_reports_which_coins_it_takes(): void
+    {
+        $view = self::handler(self::aRepositoryHoldingAMachine())(new GetMachineStateQuery());
+
+        self::assertSame(
+            [
+                CoinDenomination::FIVE_CENTS,
+                CoinDenomination::TEN_CENTS,
+                CoinDenomination::TWENTY_FIVE_CENTS,
+                CoinDenomination::ONE_UNIT,
+            ],
+            $view->acceptedCoins,
+        );
+    }
+
+    /**
+     * What the machine takes does not depend on what it currently holds. A
+     * machine with an empty till still accepts the same four coins, and a client
+     * that dimmed a button because the reserve ran out would be refusing money
+     * the machine is happy to take.
+     */
+    public function test_the_coins_it_takes_do_not_depend_on_the_coins_it_has(): void
+    {
+        $empty = new InMemoryVendingMachineRepository();
+        $empty->save(VendingMachineBuilder::aStockedMachine()->withId(self::MACHINE_ID)->withNoChange()->build());
+
+        $view = self::handler($empty)(new GetMachineStateQuery());
+
+        self::assertCount(4, $view->acceptedCoins);
+    }
+
     public function test_it_reports_whether_exact_change_is_required(): void
     {
         $stocked = self::handler(self::aRepositoryHoldingAMachine())(new GetMachineStateQuery());

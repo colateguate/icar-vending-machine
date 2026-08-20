@@ -22,6 +22,12 @@ const idle = {
   products: [{ selector: 'WATER', name: 'Water', price: '0.65', count: 5 }],
   changeReserve: bag('8.00'),
   insertedCoins: bag('0.00'),
+  acceptedCoins: [
+    { denomination: '0.05', dispensableAsChange: true },
+    { denomination: '0.10', dispensableAsChange: true },
+    { denomination: '0.25', dispensableAsChange: true },
+    { denomination: '1.00', dispensableAsChange: false },
+  ],
   exactChangeOnly: false,
 };
 
