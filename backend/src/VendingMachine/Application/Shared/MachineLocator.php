@@ -16,7 +16,7 @@ use App\VendingMachine\Domain\Machine\VendingMachineRepository;
  * configuration rather than something a caller supplies — which is why the API
  * route is /api/machine and not /api/machines/{id}. Keeping that assumption in
  * one class means serving a fleet later changes this file and the routes,
- * rather than all five use cases.
+ * rather than all six use cases.
  */
 final readonly class MachineLocator
 {
