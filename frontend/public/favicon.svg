@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Vending machine">
+  <rect width="32" height="32" rx="4" fill="#1f2933" />
+  <rect x="5" y="5" width="13" height="17" rx="1.5" fill="#3e4c59" />
+  <g fill="#9aa5b1">
+    <rect x="7" y="7.5" width="9" height="2" rx="1" />
+    <rect x="7" y="11.5" width="9" height="2" rx="1" />
+    <rect x="7" y="15.5" width="9" height="2" rx="1" />
+  </g>
+  <rect x="21" y="5" width="6" height="9" rx="1" fill="#3e4c59" />
+  <rect x="22.5" y="7" width="3" height="1.5" rx="0.75" fill="#f0b429" />
+  <rect x="5" y="24" width="22" height="3" rx="1" fill="#3e4c59" />
+</svg>

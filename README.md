@@ -8,7 +8,7 @@ docker compose exec backend php bin/console app:machine:run "1, 0.25, 0.25, GET-
 # -> SODA
 ```
 
-> **Status.** The backend is complete: domain, use cases, HTTP API, CLI, persistence, container. The React panel is the remaining work — tickets 15–17 of the [backlog](.claude/tasks/vending-machine-challenge/), which also carries a handful of smaller items: the panel's own container, and the follow-ups the release review left behind.
+> **Status.** The backend is complete: domain, use cases, HTTP API, CLI, persistence, container. The React panel is the remaining work — tickets 16–17 of the [backlog](.claude/tasks/vending-machine-challenge/), which also carries a handful of smaller items: the panel's own container, and the follow-ups the release review left behind.
 
 ---
 
@@ -326,7 +326,7 @@ docs/
   architecture.md      the hexagon, and a purchase traced through it
   testing-strategy.md  what each of the four suites is for
   adr/                 sixteen decision records
-frontend/              React panel (tickets 15–17)
+frontend/              React panel (scaffolded; tickets 16–17)
 .claude/               the tickets, skills and review agents used to build this
 ```
 
