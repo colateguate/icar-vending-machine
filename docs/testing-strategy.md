@@ -8,16 +8,16 @@ A test's level is decided by **the question it answers**, never by the machinery
 
 | Suite | Tests | Boots kernel | Repository | Answers |
 |---|---:|---|---|---|
-| `unit` | 285 | no | none — the aggregate is built directly | Are the business rules correct? |
+| `unit` | 289 | no | none — the aggregate is built directly | Are the business rules correct? |
 | `application` | 36 | no | in-memory | Does the use case orchestrate correctly? |
 | `integration` | 43 | yes | Doctrine + real SQLite | Does the adapter honour the port? |
 | `acceptance` | 80 | yes | Doctrine + real SQLite | Does it work end to end, error contract included? |
-| **total** | **444** | | | 3 086 assertions |
+| **total** | **448** | | | 3 096 assertions |
 
 Run one at a time — `make test-unit` is the fast loop, and it is fast because it touches nothing:
 
 ```bash
-make test-unit         # 285 tests, no kernel, no database, no network
+make test-unit         # 289 tests, no kernel, no database, no network
 make test-application
 make test-integration
 make test-acceptance

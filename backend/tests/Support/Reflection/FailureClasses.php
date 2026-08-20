@@ -15,13 +15,14 @@ use SplFileInfo;
 /**
  * The failures this application can name, found by walking the source tree.
  *
- * Nothing here is a hand-kept list, and that is the point. Three tests ask a
+ * Nothing here is a hand-kept list, and that is the point. Four tests ask a
  * completeness question — is every domain failure catalogued, does every
- * catalogued failure appear in the published contract, does each answer the
- * status the rule demands — and a completeness question checked against a
- * list someone maintained by hand only ever answers "yes, all of the ones I
- * remembered". Adding a file has to be enough to make these tests ask about
- * it, so the tests go and look.
+ * catalogued failure appear in the published contract, does that contract
+ * promise a failure the catalog cannot produce, is the status rule stated for
+ * every entry — and a completeness question checked against a list someone
+ * maintained by hand only ever answers "yes, all of the ones I remembered".
+ * Adding a file has to be enough to make these tests ask about it, so the
+ * tests go and look.
  */
 final class FailureClasses
 {

@@ -220,15 +220,15 @@ No attributes in the core either: routes live in YAML, handlers are registered b
 ## Tests
 
 ```bash
-make test           # 444 tests, 3 086 assertions
-make test-unit      # 285 of them, no kernel and no database
+make test           # 448 tests, 3 096 assertions
+make test-unit      # 289 of them, no kernel and no database
 make qa             # style + PHPStan max + Deptrac + schema drift + tests
 make test-mutation  # Infection over Domain + Application — MSI 100%
 ```
 
 | Suite | Tests | Answers |
 |---|---:|---|
-| unit | 285 | Are the business rules correct? |
+| unit | 289 | Are the business rules correct? |
 | application | 36 | Does the use case orchestrate correctly? |
 | integration | 43 | Does the adapter honour the port? |
 | acceptance | 80 | Does it work end to end, error contract included? |
