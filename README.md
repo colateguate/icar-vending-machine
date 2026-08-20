@@ -125,10 +125,17 @@ It stays true because it is executed. Every response the acceptance suite produc
     {"denomination":"0.10","count":20},
     {"denomination":"0.25","count":20}],"amount":"8.00"},
   "insertedCoins":{"coins":[],"amount":"0.00"},
+  "acceptedCoins":[
+    {"denomination":"0.05","dispensableAsChange":true},
+    {"denomination":"0.10","dispensableAsChange":true},
+    {"denomination":"0.25","dispensableAsChange":true},
+    {"denomination":"1.00","dispensableAsChange":false}],
   "exactChangeOnly":false}}
 ```
 
 `exactChangeOnly` is the lamp on the front of the machine: the till holds nothing it is allowed to give back, so a client can warn before taking someone's money instead of discovering it in a refused sale.
+
+`acceptedCoins` answers a different question from `changeReserve` — what the slot takes, not what the till holds, so a machine serviced down to nothing still accepts all four. It exists so a client does not carry the list itself, and `dispensableAsChange` for the same reason: that the 1.00 coin goes in and never comes back is an interpretation of the brief, and a rule reimplemented on the far side of a network is a rule two systems will eventually disagree about.
 </details>
 
 <details open>

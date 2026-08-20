@@ -39,7 +39,11 @@ export default function MachinePage() {
         <div className="machine__column">
           <MachineDisplay amount={machine?.insertedCoins.amount ?? '0.00'} error={error} />
           <ExactChangeLamp lit={machine?.exactChangeOnly ?? false} />
-          <CoinButtons disabled={locked} onInsert={insertCoin} />
+          <CoinButtons
+            coins={machine?.acceptedCoins ?? []}
+            disabled={locked}
+            onInsert={insertCoin}
+          />
           <ReturnCoinButton disabled={locked} onReturn={returnCoins} />
         </div>
       </div>
