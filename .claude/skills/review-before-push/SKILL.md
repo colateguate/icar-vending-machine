@@ -1,6 +1,6 @@
 ---
 name: review-before-push
-description: Úsala SIEMPRE antes de hacer push de una rama ("revisa antes de subir", "¿puedo pushear?", "lanza los revisores"), o cuando implement-feature/fix-bug lleguen a su cierre. Calcula el diff, lanza los 4 agentes revisores del repo (security, architecture, clean-code, test-quality) en paralelo y sintetiza un único veredicto PASS/KO. NO la uses para revisar PRs ya abiertos en GitHub ni para reviews conceptuales sin diff.
+description: Úsala SIEMPRE antes de hacer push de una rama ("revisa antes de subir", "¿puedo pushear?", "lanza los revisores"), o cuando implement-feature/fix-bug lleguen a su cierre. Calcula el diff, lanza en paralelo los cuatro agentes revisores que correspondan a lo que el diff toca (roster de backend o de frontend) y sintetiza un único veredicto PASS/KO. NO la uses para revisar PRs ya abiertos en GitHub ni para reviews conceptuales sin diff.
 ---
 
 # Revisión pre-push con veredicto agregado
@@ -19,18 +19,22 @@ Cuatro lentes independientes sobre el mismo diff, un solo veredicto. Con KO no s
    - Diff enorme (>2000 líneas o >30 archivos) → propone restringir por subárbol (`backend/src/VendingMachine/Domain/` p.ej.) o partir el push.
 4. Si el diff toca `backend/composer.json` o `backend/composer.lock`, ejecuta **tú** `composer audit` desde `backend/` y pega la salida en el prompt de `security-reviewer`. Los revisores no tienen shell (Fase 2); sin esa salida su check A06 no es verificable y no deben inventarlo.
 
-## Fase 2 — Despachar los 4 revisores en paralelo
+## Fase 2 — Despachar los revisores en paralelo
 
-En **una sola tool-call** con 4 invocaciones del tool Agent, lanza:
+En **una sola tool-call** con una invocación del tool Agent por revisor, lanza:
 
-| Agente | Lente |
-|---|---|
-| `security-reviewer` | OWASP + reglas monetarias del repo |
-| `architecture-reviewer` | Hexagonal + DDD + CQRS + regla de dependencias |
-| `clean-code-reviewer` | Legibilidad, PHP moderno, muerto/duplicado |
-| `test-quality-reviewer` | Nivel correcto, comportamiento vs implementación, asserts |
+**Cuál de los dos rosters, según lo que toque el diff.** Siempre cuatro lentes y un solo veredicto; lo que cambia es qué par ocupa las plazas de arquitectura y tests, porque `architecture-reviewer` habla de Deptrac y agregados y `test-quality-reviewer` de PHPUnit y niveles: sobre un diff de React no dan falsos positivos, dan ruido, y un revisor que opina de lo que no entiende enseña a ignorar veredictos.
 
-**Los cuatro son de solo lectura y no tienen shell**: su allowlist es `Read, Grep, Glob`. No es solo una instrucción en su prompt, es lo que pueden hacer. Un revisor que edita destruye trabajo sin commitear y contamina el diff que está juzgando — ya ocurrió una vez, con un revisor reescribiendo el código que se le había pedido revisar.
+| Lente | Diff de `backend/` | Diff de `frontend/` |
+|---|---|---|
+| Seguridad | `security-reviewer` | `security-reviewer` |
+| Arquitectura | `architecture-reviewer` | `frontend-architecture-reviewer` |
+| Legibilidad | `clean-code-reviewer` | `clean-code-reviewer` |
+| Tests | `test-quality-reviewer` | `frontend-test-quality-reviewer` |
+
+**Diff que toca los dos** (p. ej. un cambio de contrato que mueve backend y cliente a la vez): despacha la unión, seis agentes en la misma tool-call, y pasa a cada uno el diff **completo** — el de arquitectura de backend necesita ver el cliente para juzgar si el contrato se filtró, y al revés. Un diff que solo toca `.claude/`, `docs/` o `Makefile` no lleva revisores de arquitectura ni de tests: di qué ejes omites y por qué.
+
+**Todos son de solo lectura y no tienen shell**: su allowlist es `Read, Grep, Glob`. No es solo una instrucción en su prompt, es lo que pueden hacer. Un revisor que edita destruye trabajo sin commitear y contamina el diff que está juzgando — ya ocurrió una vez, con un revisor reescribiendo el código que se le había pedido revisar.
 
 Red de seguridad: apunta la salida de `git status --porcelain` **antes** de lanzarlos y compárala al recibir los informes. Si difiere, el árbol se ha tocado: revierte antes de seguir y no incorpores nada al commit sin haberlo decidido tú.
 
