@@ -1,0 +1,83 @@
+{
+    // Mutation testing, deliberately scoped to the business core: mutating
+    // infrastructure glue produces noise; MSI over Domain + Application is
+    // the number that says "these tests would catch a regression".
+    "$schema": "vendor/infection/infection/resources/schema.json",
+    "source": {
+        "directories": [
+            "src/VendingMachine/Domain",
+            "src/VendingMachine/Application"
+        ]
+    },
+    // Only the suites that are supposed to kill these mutants run here. An
+    // acceptance test killing a domain mutant proves nothing a unit test did
+    // not already prove, and it drags a kernel boot into every mutant run:
+    // the same suite costs 0.01s scoped versus 5.5s unscoped.
+    // Note the "=" form: Infection forwards this string as a single argv
+    // entry, so a space-separated option would reach PHPUnit as one unknown
+    // option name.
+    "testFrameworkOptions": "--testsuite=unit,application",
+    "timeout": 30,
+    "logs": {
+        "text": "var/infection.log"
+    },
+    "mutators": {
+        "@default": true,
+
+        // Money::fromDecimalString guards its input with
+        // /^\d+(\.\d{1,2})?$/ before parsing, so by the time the two (int)
+        // casts run the strings are provably digit-only and PHP's arithmetic
+        // operators juggle them to the identical int — verified across every
+        // shape the regex admits, same value and same type. The casts are not
+        // redundant, though: PHPStan at max level cannot carry the regex
+        // guarantee into the type system and rejects the expression without
+        // them ("Binary operation + between mixed and non-empty-string").
+        //
+        // So the two CastInt mutants there are equivalent by construction and
+        // no test can ever kill them. Recording that verdict here beats
+        // leaving a warning on every future pull request that touches this
+        // file, which only teaches people to stop reading warnings.
+        "CastInt": {
+            "ignore": [
+                "App\\VendingMachine\\Domain\\Money\\Money::fromDecimalString"
+            ]
+        },
+
+        // OptimalChangeStrategy's table is unobservable from outside the port,
+        // and for one specific reason: with the machine's denominations
+        // ({5,10,25} dispensable) the coin count is monotone decreasing in how
+        // many of the current denomination are taken — a 10 always replaces two
+        // 5s, a 25 always replaces two 10s and a 5. Since the inner loop walks
+        // the count upwards, the last candidate at every cell is also the best
+        // one, so any rule that lets a later candidate win produces an
+        // identical selection. Mutating the comparison, the base score, the
+        // loop's starting index or a row's pre-emptying therefore changes
+        // nothing a test could see.
+        //
+        // Measured, not assumed: each of the fourteen surviving mutants was
+        // implemented in isolation and run over ~2,300 payable reserves. Every
+        // one produced the exact amount, never over-drew the reserve, never
+        // returned a 1.00 coin, and matched the fewest-coin count from an
+        // exhaustive oracle. No input distinguishes them.
+        //
+        // The comparison is still not dead code: monotonicity is a property of
+        // the coin set, not of the algorithm. Add a 20-cent denomination and it
+        // breaks — 40 is 20+20, while "last candidate wins" would answer
+        // 25+10+5 — which is precisely the failure mode ADR-0006 exists to
+        // prevent. No test can build that set while CoinDenomination is a
+        // closed enum, so these mutants are unkillable by construction rather
+        // than by omission.
+        //
+        // THIS SUPPRESSION EXPIRES if a non-canonical denomination is ever
+        // added. Delete these entries then: the mutants become killable, and
+        // leaving them muted would hide a real defect.
+        "IncrementInteger": { "ignore": ["App\\VendingMachine\\Domain\\Dispensing\\OptimalChangeStrategy::scoreEverySubtotal", "App\\VendingMachine\\Domain\\Dispensing\\OptimalChangeStrategy::rebuildSelection"] },
+        "DecrementInteger": { "ignore": ["App\\VendingMachine\\Domain\\Dispensing\\OptimalChangeStrategy::scoreEverySubtotal", "App\\VendingMachine\\Domain\\Dispensing\\OptimalChangeStrategy::rebuildSelection"] },
+        "Plus": { "ignore": ["App\\VendingMachine\\Domain\\Dispensing\\OptimalChangeStrategy::scoreEverySubtotal"] },
+        "Multiplication": { "ignore": ["App\\VendingMachine\\Domain\\Dispensing\\OptimalChangeStrategy::scoreEverySubtotal"] },
+        "LessThan": { "ignore": ["App\\VendingMachine\\Domain\\Dispensing\\OptimalChangeStrategy::scoreEverySubtotal"] },
+        "LogicalOrAllSubExprNegation": { "ignore": ["App\\VendingMachine\\Domain\\Dispensing\\OptimalChangeStrategy::scoreEverySubtotal"] }
+    },
+    "minMsi": 85,
+    "minCoveredMsi": 90
+}

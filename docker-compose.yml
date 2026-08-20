@@ -1,0 +1,39 @@
+# The whole stack, which today is one service.
+#
+# No database service, and that is the point of choosing SQLite (ADR-0008):
+# there is nothing to wait for, nothing to authenticate against and nothing to
+# configure. The data lives in a named volume, so it survives `docker compose
+# down` and disappears with `docker compose down -v` — which is also how you
+# reset the machine to the catalogue of the brief.
+#
+# The frontend service arrives with ticket 13b, once there is a panel to serve.
+
+services:
+  backend:
+    build:
+      context: ./backend
+      target: runtime
+    ports:
+      - "${BACKEND_PORT:-8000}:8080"
+    environment:
+      # Overridable so the same file works for a real deployment. The default
+      # is obviously not a secret: this application has no sessions and no
+      # signed anything, and Symfony still insists the parameter exists.
+      APP_SECRET: "${APP_SECRET:-this-is-not-a-secret-set-your-own}"
+
+      # The machine this deployment serves. One identifier, one machine, which
+      # is why the route is /api/machine and not /api/machines/{id}.
+      MACHINE_ID: "${MACHINE_ID:-lobby-01}"
+
+      # Inside the volume, so the machine outlives the container.
+      DATABASE_URL: "${DATABASE_URL:-sqlite:////app/var/data/machine.db}"
+
+      # Who may call the API from a browser. Localhost by default, for the
+      # panel running with `npm run dev` during development.
+      CORS_ALLOW_ORIGIN: "${CORS_ALLOW_ORIGIN:-^https?://(localhost|127\\.0\\.0\\.1)(:[0-9]+)?$$}"
+    volumes:
+      - machine-data:/app/var/data
+    restart: unless-stopped
+
+volumes:
+  machine-data:

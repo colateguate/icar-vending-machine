@@ -1,0 +1,71 @@
+doctrine:
+    dbal:
+        url: '%env(resolve:DATABASE_URL)%'
+        use_savepoints: true
+
+        # Custom types, one per value object that owns a column. Registering
+        # them here is what lets the mapping say `type="coin_collection"` and
+        # get a CoinCollection back — the aggregate never sees a string.
+        types:
+            machine_id: App\VendingMachine\Infrastructure\Persistence\Doctrine\Type\MachineIdType
+            inventory: App\VendingMachine\Infrastructure\Persistence\Doctrine\Type\InventoryType
+            coin_collection: App\VendingMachine\Infrastructure\Persistence\Doctrine\Type\CoinCollectionType
+
+    orm:
+        auto_generate_proxy_classes: true
+        enable_lazy_ghost_objects: true
+        report_fields_where_declared: true
+        validate_xml_mapping: true
+        naming_strategy: doctrine.orm.naming_strategy.underscore_number_aware
+
+        # No auto_mapping: nothing in src/ is scanned for entities, because
+        # scanning is how an ORM attribute ends up in the domain by accident.
+        # The one mapped class is declared below, in XML, outside the code.
+        auto_mapping: false
+        mappings:
+            VendingMachine:
+                type: xml
+                is_bundle: false
+                dir: '%kernel.project_dir%/config/doctrine'
+                prefix: 'App\VendingMachine\Domain'
+                alias: VendingMachine
+
+when@prod:
+    doctrine:
+        orm:
+            # Normally false in production, so that proxies are generated once
+            # when the cache is warmed instead of on demand. Here it stays true
+            # for a reason that is worth reading before changing it back.
+            #
+            # A Doctrine proxy is a subclass of the entity, and VendingMachine
+            # is final. Warming the cache therefore fails outright:
+            #
+            #   Cannot generate lazy ghost: class "...\VendingMachine" is final
+            #
+            # Proxies exist for lazy loading — an entity referenced but not yet
+            # fetched — and this model has no associations at all: find() always
+            # returns a whole aggregate and getReference() is never called. So
+            # nothing here ever needs a proxy, and pre-generating them buys
+            # nothing while costing the aggregate its final.
+            #
+            # Generating on demand means the demand never arrives. If this model
+            # ever grows an association the failure comes back, and the answer
+            # then is PHP 8.4 with `enable_native_lazy_objects` — which needs no
+            # subclass and is precisely the feature that makes final entities
+            # work — rather than opening the aggregate up.
+            auto_generate_proxy_classes: true
+            proxy_dir: '%kernel.build_dir%/doctrine/orm/Proxies'
+            query_cache_driver:
+                type: pool
+                pool: doctrine.system_cache_pool
+            result_cache_driver:
+                type: pool
+                pool: doctrine.result_cache_pool
+
+    framework:
+        cache:
+            pools:
+                doctrine.result_cache_pool:
+                    adapter: cache.app
+                doctrine.system_cache_pool:
+                    adapter: cache.system

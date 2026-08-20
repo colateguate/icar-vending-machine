@@ -42,6 +42,7 @@ backend/src/
 | `Application` | `Domain`, `Shared/Domain` |
 | `Delivery` | `Application`, `Domain`, `Shared/Domain`, `Symfony\*`, `Psr\*` |
 | `Infrastructure` | everything above + `Doctrine\*` |
+| `Shared/Infrastructure` | `Shared/Domain`, `Symfony\*`, `Doctrine\*`, `Psr\*` |
 
 Layer vocabulary for the interview: `Delivery/` = primary/driving adapters (the outside world delivers requests to the core); `Infrastructure/` = secondary/driven adapters (the core delegates outward through ports). That pair **is** the hexagon.
 
@@ -59,9 +60,9 @@ Layer vocabulary for the interview: `Delivery/` = primary/driving adapters (the 
 - **`CoinDenomination` is a backed enum** (5, 10, 25, 100). The spec accepts four coins but only ever returns three: **the 1.00 coin is never dispensed as change** (`isDispensableAsChange()`). This is an interpreted requirement, documented in `docs/adr/`.
 - **`ChangeStrategy` is a domain service port** with two implementations: `OptimalChangeStrategy` (bounded-coin DP, wired default) and `GreedyChangeStrategy` (kept + tested to prove where greedy fails: needing 0.30 from {0.25×1, 0.10×3} greedy refuses a sale the optimal serves). Passed to `purchase()` as a **method parameter** (double dispatch), never a constructor dependency of the aggregate.
 - **`CannotDispenseChange` is a domain error**: the sale is rejected, coins stay in escrow, `RETURN-COIN` remains the single refund path. The aggregate uses compute-then-commit — no field is mutated before all checks pass. `requiresExactChange()` is exposed in the API as `exactChangeOnly`.
-- Commands carry **primitives**, handlers translate to VOs; VO constructors ARE the validation. Command handlers return `void` unless the physical result cannot be recovered by a later query (`PurchaseResult`, `ReturnedCoinsResult` — the coins have physically left the machine).
+- Commands carry **primitives**, handlers translate to VOs; VO constructors ARE the validation. Command handlers return `void` unless the physical result cannot be recovered by a later query (`DispensedGoods`, `CoinCollection` — the can and the coins have physically left the machine).
 - Concurrency: **optimistic locking** (Doctrine `<version/>` column) → HTTP 409. Retries/pessimistic locking deliberately out of scope.
-- Errors over HTTP: RFC 7807 `application/problem+json` via an explicit `ErrorCatalog` map. Rule: **422** = invalid input value · **409** = valid value conflicting with machine state · **404** = named thing doesn't exist.
+- Errors over HTTP: RFC 7807 `application/problem+json` via an explicit `ErrorCatalog` map. Rule, keyed on whose problem it is: **422** = the value you sent is not valid input · **409** = the value is valid but conflicts with current machine state · **404** = you named something that does not exist (`UnknownProductSelector` — the caller asked for SODA and there is no SODA). A machine that was never provisioned is **503**, not 404: the caller named nothing (the route is the singleton `/api/machine`) and the fault is ours, so the honest answer is "not ready yet". Anything the domain does not anticipate is **500** with the detail suppressed.
 
 ## Test levels — which question each answers
 
@@ -72,7 +73,9 @@ Layer vocabulary for the interview: `Delivery/` = primary/driving adapters (the 
 | Integration | `backend/tests/Integration/` | yes | **Doctrine + real SQLite** | Does the adapter honor the port? |
 | Acceptance | `backend/tests/Acceptance/` | yes | Doctrine + real SQLite | Does it work end-to-end through HTTP/CLI, error contract included? |
 
-Non-negotiables: the three challenge examples exist as executable specification (HTTP acceptance + CLI); the repository **contract test** is abstract and runs against *both* adapters; never mock value objects; test business rules at unit level, not through the kernel. Infection (mutation testing) gates `Domain/` + `Application/` only.
+**A test's level is decided by the question it answers, not by the machinery it happens to need.** The "boots kernel" and "repository" columns describe what each level typically requires, not a requirement every test in that suite must meet: the in-memory repository test needs neither kernel nor database, yet "does this adapter honor the port?" is an integration question, so it belongs there.
+
+Non-negotiables: the three challenge examples exist as executable specification (HTTP acceptance + CLI); the repository **contract test** is abstract (`tests/Support/Contract/`) and every adapter extends it — written as a contract from the *first* adapter, so it states what any implementation must guarantee rather than what one happens to do. Expectations that legitimately differ between adapters (Doctrine's identity map returns the same instance twice; the in-memory double copies on read) stay in the adapter's own test, never in the contract. Never mock value objects; test business rules at unit level, not through the kernel. Infection (mutation testing) gates `Domain/` + `Application/` only.
 
 ## Commands (once scaffolding lands — tickets 2–3)
 
@@ -84,7 +87,31 @@ make test-mutation  # Infection on Domain + Application
 make up             # docker compose up (backend + frontend)
 ```
 
-Until the Makefile exists, run tools directly from `backend/` (`vendor/bin/phpunit --testsuite unit`, `vendor/bin/deptrac`, `vendor/bin/phpstan analyse`).
+Direct equivalents from `backend/`: `vendor/bin/phpunit --testsuite unit|application|integration|acceptance`, `vendor/bin/phpstan analyse`, `vendor/bin/deptrac analyse` (config auto-detected from `deptrac.php`), `vendor/bin/php-cs-fixer fix`. Note: PHPUnit config is `phpunit.dist.xml` (PHPUnit 11 recipe convention).
+
+Mutation testing **does run locally**: Xdebug is installed with `xdebug.mode=off`, which is why it costs nothing on every other command, and the `make test-mutation` target turns coverage on for its own run (`XDEBUG_MODE=coverage`). It takes ~4 minutes and it is the only gate not in `make qa` for that reason — run it whenever a change lands in `Domain/` or `Application/`, which is the scope Infection is configured for.
+
+`make schema-check` (also part of `make qa`) migrates a throwaway SQLite file and runs `doctrine:schema:validate`, so the mapping and the migration cannot drift apart in silence.
+
+## Branching model (git flow)
+
+```
+main                     production; only receives PRs from a release branch
+ └── release/backend     deliverable branch for the backend sprint (tickets 01-14)
+      ├── feat/<slug>    one branch per feature ticket
+      ├── fix/<slug>     one branch per bug ticket
+      └── chore/<slug>   tooling/process changes that are neither
+```
+
+Rules, in order:
+
+1. **Never commit directly to `main` or to a release branch.** Every change starts as a branch off the current release branch.
+2. Branch name comes from the ticket: `feat/` for new tickets, `fix/` for bugs, `chore/` for tooling. Kebab-case, short, no ticket number.
+3. When the ticket is done: push the branch. **The human opens the PR** into `release/backend` — Claude does not open or merge PRs.
+4. After the PR merges, `git checkout release/backend && git pull` before cutting the next branch.
+5. Merges into a release branch use `--no-ff` so the branch topology survives in the log (this is part of the evaluated deliverable).
+6. Frontend tickets (15-17) get their own `release/frontend` cut from `main`, after `release/backend` merges.
+7. `release/backend` → `main` is the final PR, once tickets 01-14 are in.
 
 ## Workflow
 

@@ -17,6 +17,8 @@ Violar la letra de las fases es violar el espíritu. No hay "fast path".
 
 Si viene de ticket: **léelo entero** (`.claude/tasks/…`). Sus criterios de aceptación definen "corregido". Si el ticket contradice lo que ves en el código, pregunta antes de tocar nada. Si vas a tocar >3 archivos productivos, propón partir con `create-ticket`.
 
+**Antes de tocar un solo fichero, abre la rama.** `git checkout release/backend && git pull && git checkout -b fix/<slug>` (ver `CLAUDE.md` § Branching model). Nunca commitees sobre `main` ni sobre la release.
+
 ## Fase 1 — Reproducir (solo bugs)
 
 Localiza la capa donde vive la causa raíz — no donde se manifiesta el síntoma:
@@ -71,7 +73,7 @@ Hallazgos laterales → sugiere `/create-ticket` con `Origen: Detectado durante 
 
 ## Cierre
 
-Mueve el ticket a `.claude/completed_tasks/` si venía de ticket. Commit atómico Conventional (`fix(domain): ...`). **Antes de push: `review-before-push`.** Informe numerado: (1) clasificación y causa raíz en una línea, (2) test añadido y a qué nivel, (3) diff mínimo (archivos:líneas), (4) evidencia de Fase 4 (ambas), (5) regresión con counts, (6) hallazgos laterales y lo que quedó **sin** hacer, explícitamente.
+**Revisa `documentation/`** antes de cerrar: si el bug nacía de algo que esos apuntes explican mal, o si ya no describen el código, corrígelo — una doc que contradice al código es peor que no tenerla. Y si la causa raíz fue una trampa que costó descubrir, cuéntala: son las que más valen. Mueve el ticket a `.claude/completed_tasks/` si venía de ticket. Commit atómico Conventional (`fix(domain): ...`) en la rama de Fase 0. **Antes de push: `review-before-push`**; con PASS, `git push -u origin <rama>` y el usuario abre el PR hacia `release/backend`. Informe numerado: (1) clasificación y causa raíz en una línea, (2) test añadido y a qué nivel, (3) diff mínimo (archivos:líneas), (4) evidencia de Fase 4 (ambas), (5) regresión con counts, (6) hallazgos laterales y lo que quedó **sin** hacer, explícitamente.
 
 ## Red flags — STOP
 

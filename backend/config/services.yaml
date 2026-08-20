@@ -1,0 +1,132 @@
+# yaml-language-server: $schema=../vendor/symfony/dependency-injection/Loader/schema/services.schema.json
+
+# All service wiring lives in this one file, on purpose.
+#
+# The original plan split it by layer into config/services/{domain,application,
+# infrastructure}.yaml. Symfony loads every `imports:` entry *before* the file's
+# own `services:` block, whatever order the keys appear in, and the last
+# definition of a service wins — so the bulk `App\` registration below would
+# silently overwrite anything an imported file had configured explicitly, and
+# the three bus adapters would all have received the same bus. Splitting the
+# file reads better right up until it stops working; one sectioned file is
+# honest about how the container actually loads.
+
+parameters:
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    # ------------------------------------------------------------------
+    # Handlers reach their bus through the interface they implement.
+    # This is what keeps #[AsMessageHandler] — and the framework with it —
+    # out of the application layer. Adding a use case needs no change here.
+    #
+    # It has to sit alongside the App\ registration below: _instanceof only
+    # applies to services declared in the same file, and putting it in an
+    # imported file silently tags nothing at all.
+    # ------------------------------------------------------------------
+    _instanceof:
+        App\Shared\Domain\Bus\Command\CommandHandler:
+            tags: [{ name: messenger.message_handler, bus: command.bus }]
+
+        App\Shared\Domain\Bus\Query\QueryHandler:
+            tags: [{ name: messenger.message_handler, bus: query.bus }]
+
+    # ------------------------------------------------------------------
+    # Autoregistration. The Domain layers are excluded: an aggregate is not
+    # a service — it is built by a use case or rebuilt from storage — and
+    # keeping them out means the container cannot accidentally become a way
+    # to reach into the model.
+    # ------------------------------------------------------------------
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/Kernel.php'
+            - '../src/Shared/Domain/'
+            - '../src/VendingMachine/Domain/'
+
+    # ------------------------------------------------------------------
+    # Controllers. They are plain invokable classes rather than subclasses of
+    # AbstractController, so nothing hands them a service locator and their
+    # dependencies are the ones in their constructor. The price of that is
+    # this tag: Symfony only fetches a controller from the container when it
+    # is told the class is one, and without it a controller with constructor
+    # arguments is instantiated with none and fails at the first request.
+    # ------------------------------------------------------------------
+    App\VendingMachine\Delivery\Http\Controller\:
+        resource: '../src/VendingMachine/Delivery/Http/Controller/'
+        tags: ['controller.service_arguments']
+
+    # ------------------------------------------------------------------
+    # Ports bound to adapters. This is where the hexagon is actually wired:
+    # swapping an implementation is an edit here, not a change in the core.
+    # ------------------------------------------------------------------
+    App\Shared\Domain\Bus\Command\CommandBus: '@App\Shared\Infrastructure\Bus\Command\MessengerCommandBus'
+    App\Shared\Domain\Bus\Query\QueryBus: '@App\Shared\Infrastructure\Bus\Query\MessengerQueryBus'
+    App\Shared\Domain\Bus\Event\EventBus: '@App\Shared\Infrastructure\Bus\Event\MessengerEventBus'
+
+    # The line that makes the hexagon real: the whole application asks for the
+    # port, and this is the only place that says which adapter answers. The
+    # in-memory one is still in the codebase and still passes the same contract
+    # test (ADR-0009) — swapping back is this one line.
+    App\VendingMachine\Domain\Machine\VendingMachineRepository: '@App\VendingMachine\Infrastructure\Persistence\Doctrine\DoctrineVendingMachineRepository'
+
+    # Optimal is the default because it never refuses a sale the machine could
+    # serve. Greedy stays in the codebase as the tested counterexample that
+    # makes this a decision rather than a preference (ADR-0006).
+    App\VendingMachine\Domain\Dispensing\ChangeStrategy: '@App\VendingMachine\Domain\Dispensing\OptimalChangeStrategy'
+    App\VendingMachine\Domain\Dispensing\OptimalChangeStrategy: ~
+
+    # ------------------------------------------------------------------
+    # Explicit arguments. Each of these must come after the App\ block above,
+    # or the bulk registration replaces them.
+    # ------------------------------------------------------------------
+    App\Shared\Infrastructure\Bus\Command\MessengerCommandBus:
+        arguments: ['@command.bus']
+
+    App\Shared\Infrastructure\Bus\Query\MessengerQueryBus:
+        arguments: ['@query.bus']
+
+    App\Shared\Infrastructure\Bus\Event\MessengerEventBus:
+        arguments: ['@event.bus']
+
+    # This deployment serves a single machine and its identifier is
+    # configuration, which is why the API route is /api/machine rather than
+    # /api/machines/{id}.
+    App\VendingMachine\Application\Shared\MachineLocator:
+        arguments:
+            $machineId: '%env(MACHINE_ID)%'
+
+# Nothing injects the buses yet — the controllers arrive with the HTTP layer —
+# so the compiler removes them as unused and the wiring test cannot reach them.
+# Exposing them in the test environment only keeps that test honest without
+# making anything public in production.
+when@test:
+    services:
+        App\Shared\Domain\Bus\Command\CommandBus:
+            alias: App\Shared\Infrastructure\Bus\Command\MessengerCommandBus
+            public: true
+
+        App\Shared\Domain\Bus\Query\QueryBus:
+            alias: App\Shared\Infrastructure\Bus\Query\MessengerQueryBus
+            public: true
+
+        App\VendingMachine\Domain\Machine\VendingMachineRepository:
+            alias: App\VendingMachine\Infrastructure\Persistence\Doctrine\DoctrineVendingMachineRepository
+            public: true
+
+        # A use case that writes and then fails, which no real one does. It is
+        # the only way to prove the transaction middleware actually rolls back,
+        # and it exists only here (see CommandTransactionTest).
+        App\Tests\Support\Doubles\SaveThenFailHandler:
+            autowire: true
+            tags: [{ name: messenger.message_handler, bus: command.bus }]
+
+        # A separate id on purpose: aliasing "query.bus" itself would replace
+        # the Messenger bus of that name and the handlers would have nowhere
+        # to be registered.
+        test.raw_query_bus:
+            alias: query.bus
+            public: true

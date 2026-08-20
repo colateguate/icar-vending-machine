@@ -1,0 +1,121 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  code-style:
+    name: Code style (php-cs-fixer)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+      - uses: ramsey/composer-install@v3
+        with:
+          working-directory: backend
+      - run: vendor/bin/php-cs-fixer fix --dry-run --diff
+
+  static-analysis:
+    name: Static analysis (PHPStan max)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+      - uses: ramsey/composer-install@v3
+        with:
+          working-directory: backend
+      - run: vendor/bin/phpstan analyse --no-progress
+
+  architecture:
+    name: Architecture boundaries (Deptrac)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+      - uses: ramsey/composer-install@v3
+        with:
+          working-directory: backend
+      - run: vendor/bin/deptrac analyse --config-file=deptrac.php --fail-on-uncovered --no-progress
+
+  schema:
+    name: Schema drift (migration vs mapping)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          # The suite and this job both talk to SQLite. It comes with the
+          # action by default; naming it means a change in that default fails
+          # here rather than in every other job at once.
+          extensions: pdo_sqlite
+          coverage: none
+      - uses: ramsey/composer-install@v3
+        with:
+          working-directory: backend
+      # The mapping and the migration have to describe the same table, and
+      # nothing else notices when they stop doing so: the tests build their
+      # schema from the mapping, so a migration that drifted would leave them
+      # green and break the first real deployment. Same command `make qa` runs.
+      - run: |
+          DATABASE_URL="sqlite:///%kernel.project_dir%/var/ci-schema.db" php bin/console doctrine:migrations:migrate --no-interaction --quiet
+          DATABASE_URL="sqlite:///%kernel.project_dir%/var/ci-schema.db" php bin/console doctrine:schema:validate
+
+  tests:
+    name: Tests (PHPUnit, 4 suites)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+      - uses: ramsey/composer-install@v3
+        with:
+          working-directory: backend
+      - run: vendor/bin/phpunit
+
+  mutation:
+    name: Mutation testing (Infection)
+    runs-on: ubuntu-latest
+    needs: tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: pcov
+      - uses: ramsey/composer-install@v3
+        with:
+          working-directory: backend
+      # Same guard as `make test-mutation`: mutating an empty tree is an error,
+      # and the Domain arrives with ticket 04.
+      - run: |
+          if find src/VendingMachine/Domain src/VendingMachine/Application -name '*.php' | grep -q .; then
+            vendor/bin/infection --threads=max --logger-github --no-progress
+          else
+            echo "No Domain/Application code yet - skipping mutation testing."
+          fi
+      # Escaped mutants are annotated on the diff by --logger-github, but
+      # uncovered ones are not: they mean business-core code that no test in
+      # the mutated suites executes at all, which is worth naming rather than
+      # leaving as a number in a summary.
+      - name: Report uncovered mutants
+        if: always()
+        run: |
+          test -f var/infection.log || exit 0
+          grep -i -A 40 'not covered' var/infection.log | head -45 || echo 'No uncovered mutants.'
