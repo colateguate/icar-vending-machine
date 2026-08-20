@@ -8,7 +8,7 @@ docker compose exec backend php bin/console app:machine:run "1, 0.25, 0.25, GET-
 # -> SODA
 ```
 
-> **Status.** The backend is complete: domain, use cases, HTTP API, CLI, persistence, container. The React panel is the remaining work (tickets 15–17 of the backlog in [`.claude/tasks/`](.claude/tasks/vending-machine-challenge/)).
+> **Status.** The backend is complete: domain, use cases, HTTP API, CLI, persistence, container. The React panel is the remaining work — tickets 15–17 of the [backlog](.claude/tasks/vending-machine-challenge/), which also carries two smaller items: a container for the panel, and a dependency-audit job for CI.
 
 ---
 
