@@ -42,7 +42,7 @@ Escribe TODOS los tests del happy path **al nivel correcto** antes de tocar impl
 - Orquestación del caso de uso → `tests/Application/` con repo **InMemory** y spy del event bus.
 - Adaptador nuevo → `tests/Integration/` (si es un repositorio: extiende el contract test abstracto para que corra contra ambos adaptadores).
 - Contrato HTTP → `tests/Acceptance/Http/` a través del kernel real.
-- Frontend → Vitest + Testing Library sobre el componente.
+- Frontend → Vitest + Testing Library sobre el componente. Tres reglas que hacen la diferencia entre un test útil y uno decorativo: **consulta por rol y nombre accesible** (`getByRole('button', { name: '0.25' })`), no por `data-testid` habiendo rol — si no hay nombre accesible, el problema es el markup; **la costura de mock es el módulo `services/`**, nunca `global.fetch`, que solo se mockea en el test de `services/httpClient.js`; y **cada función de `services/` se prueba por sus dos caras**, la feliz y la del `problem+json`.
 
 Un test de regla de negocio que arranca el kernel está en el nivel equivocado: bájalo.
 
@@ -66,7 +66,9 @@ Declarar "funciona" sin output pegado es una violación de esta fase.
 | Endpoint real | Stack levantado (`make up` o server local) + `curl` con el payload real | Petición y respuesta JSON pegadas, código HTTP incluido |
 | Caso de error real | `curl` que provoque al menos un error del catálogo | El `problem+json` pegado con su status |
 | Dominio tocado | `make test-mutation` | MSI reportado; matar los mutantes escapados que señalen asserts débiles |
-| Frontend tocado | Abrir el panel en navegador y ejercitar la interacción | Descripción de lo observado + consola sin errores |
+| Frontend tocado | Panel en el navegador contra el backend real, conducido con el MCP de Chrome DevTools: `navigate_page` → `take_snapshot` → ejercitar la interacción (`click`/`fill`) → `take_snapshot` de nuevo → `list_console_messages` | El snapshot de antes y el de después **pegados**, y la salida literal de `list_console_messages`. Una captura además, si el hallazgo es visual |
+
+"Lo he abierto y se ve bien" no es evidencia: es la misma afirmación sin comprobar que esta fase existe para impedir. El snapshot de accesibilidad es lo que demuestra que el control existía, tenía nombre y cambió de estado — y si no tiene nombre para localizarlo, eso ya es el hallazgo.
 
 Si algo inesperado aparece aquí, vuelve a Fase 4 (caso límite nuevo) o a Fase 1 (el contrato estaba mal).
 
