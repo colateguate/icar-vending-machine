@@ -14,7 +14,7 @@ So the question is not "which format" but **what keeps the document honest**.
 ## Decision drivers
 
 - Money on the wire is a decimal string, never a JSON number (ADR-0004). That is the single most important thing a client must get right, and the one a hand-kept document is most likely to get subtly wrong once and then keep wrong.
-- The error contract is eleven codes across six status codes (ADR-0012). A client branches on `code`; a document that omits one leaves the client meeting an error it was never told about.
+- The error contract is eleven codes across five status codes, plus the 500 that is the absence of a contract rather than part of one (ADR-0012). A client branches on `code`; a document that omits one leaves the client meeting an error it was never told about.
 - The frontend tickets consume this API. A contract they can read is worth more to them than prose.
 - Whatever is published has to be importable by the tools people actually use — Postman, Insomnia, Bruno, Swagger UI — without a second artifact to maintain.
 - The repository already prefers gates over agreements: Deptrac for layering, PHPStan for types, a contract test for the repository port. A document with no gate would be the one unchecked claim in the project.
