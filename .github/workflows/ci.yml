@@ -13,25 +13,52 @@ on:
   #
   # The whole workflow runs rather than the audit alone. That is nearly free
   # and buys a second thing: the runner image and the Composer that setup-php
-  # installs both move underneath us, so a green Monday is also evidence that
-  # this still builds on a toolchain nobody pinned.
+  # installs both move underneath us — pinning the actions below does not
+  # reach either of them — so a green Monday is also evidence that this still
+  # builds on the parts of the toolchain that move on their own.
   #
   # GitHub disables a schedule after 60 days without activity in the
   # repository, so a silent Monday is not proof of anything on its own.
   schedule:
     - cron: '0 6 * * 1'
 
+permissions:
+  # All this pipeline does with the automatic token is clone the repository,
+  # and a token able to do more than that is a token something else can
+  # misuse. Nothing here reads a secret and no job writes back — a grep for
+  # "secrets." or GITHUB_TOKEN over .github/ finds nothing — so declaring the
+  # minimum costs nothing today, and is what keeps that true tomorrow.
+  #
+  # Infection's pull-request annotations survive this: its GitHub logger
+  # writes "::warning file=..." to stdout, and a workflow command on stdout is
+  # read by the runner rather than posted through the API, so it needs no
+  # scope of its own.
+  contents: read
+
 defaults:
   run:
     working-directory: backend
+
+# Actions are pinned to the commit they were reviewed at, with the version
+# beside them. A tag is a moving label: whoever owns the action can point v2
+# somewhere else, and ramsey/composer-install@v3 was not even a tag but a
+# branch, which moves on every push to it. "@v3" therefore means "whatever is
+# there when this runs", and what runs has the token above within reach.
+#
+# The cost is real and is the reason this is not just a hardening step: a SHA
+# receives no patches either. These are updated by hand, deliberately, and
+# documentation/ci-y-checks.md says so and says how. Dependabot would do it
+# automatically and was declined for Composer in docs/testing-strategy.md; the
+# reason given there — a repository whose git log is part of the deliverable
+# does not want unattended pull requests — applies here unchanged.
 
 jobs:
   dependencies:
     name: Dependency advisories (composer audit)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
         with:
           php-version: '8.2'
           coverage: none
@@ -65,12 +92,12 @@ jobs:
     name: Code style (php-cs-fixer)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
         with:
           php-version: '8.2'
           coverage: none
-      - uses: ramsey/composer-install@v3
+      - uses: ramsey/composer-install@a8d0d959dab41457692a5e2041bd9b757a119e3f # 3.2.1
         with:
           working-directory: backend
       - run: vendor/bin/php-cs-fixer fix --dry-run --diff
@@ -79,12 +106,12 @@ jobs:
     name: Static analysis (PHPStan max)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
         with:
           php-version: '8.2'
           coverage: none
-      - uses: ramsey/composer-install@v3
+      - uses: ramsey/composer-install@a8d0d959dab41457692a5e2041bd9b757a119e3f # 3.2.1
         with:
           working-directory: backend
       - run: vendor/bin/phpstan analyse --no-progress
@@ -93,12 +120,12 @@ jobs:
     name: Architecture boundaries (Deptrac)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
         with:
           php-version: '8.2'
           coverage: none
-      - uses: ramsey/composer-install@v3
+      - uses: ramsey/composer-install@a8d0d959dab41457692a5e2041bd9b757a119e3f # 3.2.1
         with:
           working-directory: backend
       - run: vendor/bin/deptrac analyse --config-file=deptrac.php --fail-on-uncovered --no-progress
@@ -107,8 +134,8 @@ jobs:
     name: Schema drift (migration vs mapping)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
         with:
           php-version: '8.2'
           # The suite and this job both talk to SQLite. It comes with the
@@ -116,7 +143,7 @@ jobs:
           # here rather than in every other job at once.
           extensions: pdo_sqlite
           coverage: none
-      - uses: ramsey/composer-install@v3
+      - uses: ramsey/composer-install@a8d0d959dab41457692a5e2041bd9b757a119e3f # 3.2.1
         with:
           working-directory: backend
       # The mapping and the migration have to describe the same table, and
@@ -131,12 +158,12 @@ jobs:
     name: Tests (PHPUnit, 4 suites)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
         with:
           php-version: '8.2'
           coverage: none
-      - uses: ramsey/composer-install@v3
+      - uses: ramsey/composer-install@a8d0d959dab41457692a5e2041bd9b757a119e3f # 3.2.1
         with:
           working-directory: backend
       - run: vendor/bin/phpunit
@@ -146,12 +173,12 @@ jobs:
     runs-on: ubuntu-latest
     needs: tests
     steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
         with:
           php-version: '8.2'
           coverage: pcov
-      - uses: ramsey/composer-install@v3
+      - uses: ramsey/composer-install@a8d0d959dab41457692a5e2041bd9b757a119e3f # 3.2.1
         with:
           working-directory: backend
       # Same guard as `make test-mutation`: mutating an empty tree is an error,
