@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\VendingMachine\Delivery\Http\Error;
 
+use App\Tests\Support\Reflection\FailureClasses;
 use App\VendingMachine\Delivery\Http\Error\ErrorCatalog;
 use App\VendingMachine\Domain\Exception\CannotDispenseChange;
 use App\VendingMachine\Domain\Exception\InsufficientFunds;
@@ -13,14 +14,9 @@ use App\VendingMachine\Domain\Exception\MachineNotFound;
 use App\VendingMachine\Domain\Exception\ProductOutOfStock;
 use App\VendingMachine\Domain\Exception\UnknownProductSelector;
 use App\VendingMachine\Domain\Exception\UnsupportedCoin;
-use App\VendingMachine\Domain\Exception\VendingMachineError;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use RecursiveDirectoryIterator;
-use RecursiveIteratorIterator;
-use ReflectionClass;
 use RuntimeException;
-use SplFileInfo;
 
 /**
  * The catalog is the whole error contract of the API written down as data, so
@@ -43,7 +39,7 @@ final class ErrorCatalogTest extends TestCase
      */
     public function test_every_named_domain_failure_is_catalogued(): void
     {
-        $errors = self::namedDomainFailures();
+        $errors = FailureClasses::namedByTheDomain();
 
         self::assertNotEmpty($errors, 'no domain errors were found at all — this test is looking in the wrong place');
 
@@ -90,62 +86,5 @@ final class ErrorCatalogTest extends TestCase
     public function test_it_does_not_know_what_it_was_not_told(): void
     {
         self::assertFalse(ErrorCatalog::knows(RuntimeException::class));
-    }
-
-    /**
-     * Found by walking the domain rather than listed here, so that a new
-     * exception file is enough to make the completeness test above ask about
-     * it.
-     *
-     * @return list<class-string>
-     */
-    private static function namedDomainFailures(): array
-    {
-        $marker = new ReflectionClass(VendingMachineError::class);
-        $fileName = $marker->getFileName();
-        self::assertIsString($fileName);
-
-        $namespace = $marker->getNamespaceName();
-
-        return array_values(array_filter(
-            self::classesUnder(\dirname($fileName, 2), substr($namespace, 0, (int) strrpos($namespace, '\\'))),
-            // Not isInstantiable(): the errors that carry data hide their
-            // constructor behind a named one, and skipping them would quietly
-            // exempt exactly the ones worth checking.
-            static function (string $candidate): bool {
-                $class = new ReflectionClass($candidate);
-
-                return $class->implementsInterface(VendingMachineError::class)
-                    && !$class->isInterface()
-                    && !$class->isAbstract();
-            },
-        ));
-    }
-
-    /**
-     * Every class the autoloader can resolve from the PHP files in a
-     * directory, mapping path to name the way PSR-4 does.
-     *
-     * @return list<class-string>
-     */
-    private static function classesUnder(string $directory, string $namespace): array
-    {
-        $classes = [];
-
-        /** @var SplFileInfo $file */
-        foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($directory)) as $file) {
-            if ('php' !== $file->getExtension()) {
-                continue;
-            }
-
-            $relative = substr($file->getPathname(), \strlen($directory) + 1, -\strlen('.php'));
-            $candidate = $namespace.'\\'.str_replace(\DIRECTORY_SEPARATOR, '\\', $relative);
-
-            if (class_exists($candidate)) {
-                $classes[] = $candidate;
-            }
-        }
-
-        return $classes;
     }
 }

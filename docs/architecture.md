@@ -120,6 +120,7 @@ It does not grow without bound, because it scales by instance rather than by siz
 |---|---|
 | the business rules | `backend/src/VendingMachine/Domain/Machine/VendingMachine.php` |
 | a use case | `backend/src/VendingMachine/Application/Command/PurchaseProduct/PurchaseProductHandler.php` |
-| the HTTP contract | `backend/src/VendingMachine/Delivery/Http/Error/ErrorCatalog.php` and the `Response/` folder |
+| the HTTP contract | [`docs/openapi.yaml`](openapi.yaml) — published, and validated against every response the acceptance suite produces |
+| the error contract | `backend/src/VendingMachine/Delivery/Http/Error/ErrorCatalog.php` and the `Response/` folder |
 | how the hexagon is wired | `backend/config/services.yaml` |
 | why any of it is like this | [`adr/`](adr/) |

@@ -98,6 +98,10 @@ JSON only. Money is always a **decimal string** — never a JSON number, because
 
 Every response carries the resulting state of the machine under `machine`; the two things that physically left it travel alongside.
 
+**The whole contract is published as [`docs/openapi.yaml`](docs/openapi.yaml)** (OpenAPI 3.1) — import it into Postman with *Import → File*, or into Insomnia, Bruno or Swagger UI, and you get every endpoint with worked examples. There is no Postman collection in this repository on purpose: a collection is a derived artifact, and the derivative is the copy that goes stale.
+
+It stays true because it is executed. Every response the acceptance suite produces is validated against it, so a change of shape without a change of document fails the build ([ADR-0015](docs/adr/0015-openapi-as-a-tested-contract.md)).
+
 | Method | Path | Does |
 |---|---|---|
 | `GET` | `/api/machine` | The whole state a customer can see |
@@ -191,7 +195,7 @@ One rule decides the status, keyed on **whose problem it is**:
  "code":"unknown_product"}
 ```
 
-A test walks every named failure in the domain and fails if one is missing from the table, so a new error can never quietly become a 500. The reasoning is in [ADR-0012](docs/adr/0012-rfc7807-errors-with-explicit-status-rule.md).
+Two tests keep that table honest. One walks every named failure in the domain and fails if it is missing from the table, so a new error can never quietly become a 500 ([ADR-0012](docs/adr/0012-rfc7807-errors-with-explicit-status-rule.md)). The other walks the table itself and fails if a failure is missing from the published contract — in either direction, because a document that promises an error the code can no longer produce rots just as quietly.
 
 ## Architecture
 
@@ -216,15 +220,15 @@ No attributes in the core either: routes live in YAML, handlers are registered b
 ## Tests
 
 ```bash
-make test           # 442 tests, 2 972 assertions
-make test-unit      # 283 of them, no kernel and no I/O
+make test           # 444 tests, 3 086 assertions
+make test-unit      # 285 of them, no kernel and no database
 make qa             # style + PHPStan max + Deptrac + schema drift + tests
 make test-mutation  # Infection over Domain + Application — MSI 100%
 ```
 
 | Suite | Tests | Answers |
 |---|---:|---|
-| unit | 283 | Are the business rules correct? |
+| unit | 285 | Are the business rules correct? |
 | application | 36 | Does the use case orchestrate correctly? |
 | integration | 43 | Does the adapter honour the port? |
 | acceptance | 80 | Does it work end to end, error contract included? |
@@ -297,7 +301,7 @@ And what was deliberately *not* built, which is the more interesting half:
 
 ## Decision records
 
-Fourteen ADRs, each written in the same commit as the decision it records, each with real alternatives and at least one honest downside.
+Fifteen ADRs, each written in the same commit as the decision it records, each with real alternatives and at least one honest downside.
 
 **[Index →](docs/adr/)** · The four worth reading first: [one aggregate](docs/adr/0005-single-aggregate-root.md) · [refusing a sale without change](docs/adr/0007-reject-purchase-when-change-unavailable.md) · [the aggregate as one row](docs/adr/0008-doctrine-sqlite-xml-mapping.md) · [the error contract](docs/adr/0012-rfc7807-errors-with-explicit-status-rule.md)
 
@@ -317,7 +321,11 @@ backend/
     routes/api.yaml    every URL in one file
     services.yaml      where the hexagon is actually wired
   tests/               unit · application · integration · acceptance · Support
-docs/                  architecture, testing strategy, assumptions, ADRs
+docs/
+  openapi.yaml         the API contract, validated against real responses by the suite
+  architecture.md      the hexagon, and a purchase traced through it
+  testing-strategy.md  what each of the four suites is for
+  adr/                 fifteen decision records
 frontend/              React panel (tickets 15–17)
 .claude/               the tickets, skills and review agents used to build this
 ```

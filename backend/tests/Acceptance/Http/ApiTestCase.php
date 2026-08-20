@@ -6,6 +6,7 @@ namespace App\Tests\Acceptance\Http;
 
 use App\Tests\Support\Builder\VendingMachineBuilder;
 use App\Tests\Support\Doctrine\Schema;
+use App\Tests\Support\OpenApi\OpenApiContract;
 use App\VendingMachine\Domain\Machine\VendingMachine;
 use App\VendingMachine\Domain\Machine\VendingMachineRepository;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -74,11 +75,39 @@ abstract class ApiTestCase extends WebTestCase
             server: ['CONTENT_TYPE' => 'application/json'],
             content: null === $body ? '' : json_encode($body, \JSON_THROW_ON_ERROR),
         );
+
+        $this->assertResponseMatchesTheContract($method, $uri);
     }
 
     protected function requestWithRawBody(string $method, string $uri, string $body): void
     {
         $this->client->request($method, $uri, server: ['CONTENT_TYPE' => 'application/json'], content: $body);
+
+        $this->assertResponseMatchesTheContract($method, $uri);
+    }
+
+    /**
+     * A request the published contract does not describe, and cannot.
+     * OpenAPI documents the paths an API declares, so "a path this API
+     * never declared" has nowhere to live in the document. The refusals
+     * that answer such a request — 404 for an unknown route, 405 for a
+     * method a known route does not take — come from the router rather
+     * than from the domain, and the catalog leaves them to it.
+     *
+     * It is a named method rather than a flag, and rather than silently
+     * skipping validation whenever the spec has no such path, because
+     * that silence is the failure mode worth designing against: a typo
+     * in a URI would stop validating the very response the test exists
+     * to check, and the suite would stay green while checking nothing.
+     */
+    protected function requestOutsideTheContract(string $method, string $uri): void
+    {
+        $this->client->request($method, $uri, server: ['CONTENT_TYPE' => 'application/json']);
+    }
+
+    private function assertResponseMatchesTheContract(string $method, string $uri): void
+    {
+        OpenApiContract::assertResponseMatches($method, $uri, $this->client->getResponse());
     }
 
     /**
