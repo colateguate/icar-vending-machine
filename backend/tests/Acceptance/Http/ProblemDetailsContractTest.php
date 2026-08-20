@@ -83,7 +83,7 @@ final class ProblemDetailsContractTest extends ApiTestCase
 
     public function test_an_unknown_route_is_a_problem_document_too(): void
     {
-        $this->request('GET', '/api/machine/does-not-exist');
+        $this->requestOutsideTheContract('GET', '/api/machine/does-not-exist');
 
         self::assertResponseStatusCodeSame(404);
         self::assertResponseHeaderSame('content-type', 'application/problem+json');
@@ -92,7 +92,7 @@ final class ProblemDetailsContractTest extends ApiTestCase
 
     public function test_a_method_the_route_does_not_take_is_a_problem_document_too(): void
     {
-        $this->request('DELETE', '/api/machine');
+        $this->requestOutsideTheContract('DELETE', '/api/machine');
 
         self::assertResponseStatusCodeSame(405);
         self::assertResponseHeaderSame('content-type', 'application/problem+json');

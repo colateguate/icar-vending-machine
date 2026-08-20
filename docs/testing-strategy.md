@@ -8,21 +8,23 @@ A test's level is decided by **the question it answers**, never by the machinery
 
 | Suite | Tests | Boots kernel | Repository | Answers |
 |---|---:|---|---|---|
-| `unit` | 283 | no | none — the aggregate is built directly | Are the business rules correct? |
+| `unit` | 285 | no | none — the aggregate is built directly | Are the business rules correct? |
 | `application` | 36 | no | in-memory | Does the use case orchestrate correctly? |
 | `integration` | 43 | yes | Doctrine + real SQLite | Does the adapter honour the port? |
 | `acceptance` | 80 | yes | Doctrine + real SQLite | Does it work end to end, error contract included? |
-| **total** | **442** | | | 2 972 assertions |
+| **total** | **444** | | | 3 086 assertions |
 
 Run one at a time — `make test-unit` is the fast loop, and it is fast because it touches nothing:
 
 ```bash
-make test-unit         # 283 tests, no I/O at all
+make test-unit         # 285 tests, no kernel, no database, no network
 make test-application
 make test-integration
 make test-acceptance
 make test              # all four
 ```
+
+Two of the unit tests do touch the disk — one walks the source tree looking for exceptions nobody catalogued, one reads the published API contract — which is why the line above says "no database" rather than "no I/O". Reading a file is not what makes a test slow or fragile; a kernel, a connection and a socket are.
 
 The "boots kernel" and "repository" columns describe what each level *typically* needs, not a rule every test must obey. The clearest case is the in-memory repository test: it needs neither a kernel nor a database, and it still belongs to `integration/`, because "does this adapter honour the port?" is an integration question whatever it costs to ask. The same logic puts the DBAL type tests and the parser rules of the CLI where they are.
 
@@ -34,7 +36,7 @@ The "boots kernel" and "repository" columns describe what each level *typically*
 
 **Integration.** The adapters. The Doctrine repository is exercised against real SQLite built from the real XML mapping; the custom DBAL types are round-tripped; two EntityManagers over one file prove that a stale write is refused rather than silently winning.
 
-**Acceptance.** The promise, through the door a client actually uses. Every endpoint, the problem+json envelope, and the three worked examples of the brief — once over HTTP and once over the CLI, asserting the literal output the statement prints.
+**Acceptance.** The promise, through the door a client actually uses. Every endpoint, the problem+json envelope, and the three worked examples of the brief — once over HTTP and once over the CLI, asserting the literal output the statement prints. Every response it produces is also checked against the published contract, which is the next section.
 
 ## The contract test
 
@@ -48,6 +50,24 @@ What it deliberately leaves out is as interesting as what it contains: anything 
 
 This is the answer to "how do you know your in-memory double isn't lying?".
 
+## The published contract, used as an assertion
+
+Two gates keep `docs/openapi.yaml` from drifting away from the API. `ApiTestCase` checks every response it produces against the document — status declared, content type offered, body satisfying the schema — which is eighty-three responses and no new HTTP calls. `OpenApiErrorCoverageTest` then walks the error catalog against the document in both directions, because the first gate can only check the failures the suite happens to provoke, and `concurrent_modification` needs two connections racing.
+
+Why a written document with a test rather than one generated from the code — and why not a Postman collection — is [ADR-0015](adr/0015-openapi-as-a-tested-contract.md). What belongs here is whether the gate works.
+
+**Verified rather than assumed.** Three mutations of one response class, each run against the suite:
+
+| Mutation | Result |
+|---|---|
+| `amount` returned as a JSON number instead of a decimal string | 26 responses refused — the exact mistake [ADR-0004](adr/0004-money-as-integer-cents.md) exists to prevent |
+| an extra field added to the coin bag | 26 responses refused |
+| the `amount` field removed | 26 responses refused |
+
+The check is an assertion rather than a bare `fail()`, which is why the acceptance assertion count moved from 699 to 782: a gate that registers nothing when it passes leaves no trace of having run.
+
+Two requests sit outside the contract, through a method named `requestOutsideTheContract()` rather than a silent "skip when the spec has no such path". The silent version is the trap: it would stop validating a response the moment someone typo'd a URI, and leave the suite green while checking nothing. The same reasoning is why the walk that finds catalogued failures anchors on a *named* directory instead of counting levels up from a file — a gate that keeps passing while it stops guarding is worse than one that fails.
+
 ## Mutation testing, and why not line coverage
 
 ```bash
@@ -59,9 +79,12 @@ Line coverage tells you which code **ran**. It cannot tell you whether anything 
 Current state over `Domain/` + `Application/`:
 
 ```
-311 mutants generated · 0 escaped · 0 uncovered
+309 mutants generated · 0 escaped · 0 uncovered
+302 killed · 1 fatal error · 6 timed out
 MSI 100% · Covered Code MSI 100%
 ```
+
+A mutant that crashes or runs out of time counts as detected, and rightly: in both cases changing the code made something break, which is what the suite was being asked to do. Only *escaped* and *uncovered* move the score.
 
 The gate is `minMsi: 85`. It is scoped to the business core on purpose: mutating infrastructure glue produces noise, and the number that means something is "would these tests catch a regression in the rules?".
 

@@ -20,6 +20,7 @@ Every one of them names the alternatives that were actually considered and at le
 | [0012](0012-rfc7807-errors-with-explicit-status-rule.md) | RFC 7807 errors from an explicit catalog | 422 or 409 or 404 — and who decides a request is invalid |
 | [0013](0013-enforce-boundaries-with-deptrac-phpstan-max.md) | Deptrac + PHPStan at max, no baseline | Why the architecture is checked and not merely agreed |
 | [0014](0014-four-test-levels-mutation-gated-domain.md) | Four test levels, mutation testing over the core | What each suite is for, and why MSI instead of line coverage |
+| [0015](0015-openapi-as-a-tested-contract.md) | A hand-written OpenAPI document, tested against real responses | Why not generate the spec from the code — and why not a Postman collection |
 
 ## The four worth reading first
 
@@ -29,5 +30,7 @@ If you have ten minutes and want the decisions this project would be defended on
 2. **[0007](0007-reject-purchase-when-change-unavailable.md)** — the brief's silence turned into a decision, with the money left where the customer can still get it back.
 3. **[0008](0008-doctrine-sqlite-xml-mapping.md)** — the most arguable one: the aggregate is stored as a single row, and the cost is stated rather than hidden.
 4. **[0012](0012-rfc7807-errors-with-explicit-status-rule.md)** — one rule generates every status code, and a test makes sure no domain failure escapes it.
+
+And [0015](0015-openapi-as-a-tested-contract.md) if you want the one where the alternative nearly won: a generated spec cannot drift, and it still lost.
 
 Format is [MADR](0000-template.md), lightly adapted.
