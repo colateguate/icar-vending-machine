@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Acceptance\Http;
 
+use PHPUnit\Framework\Attributes\DataProvider;
+
 /**
  * Every way this API can say no, and the promise that it always says it the
  * same way.
@@ -59,23 +61,63 @@ final class ProblemDetailsContractTest extends ApiTestCase
     /**
      * Not 422: we never got as far as looking at the values. This is the one
      * error that is about the bytes rather than about their meaning.
+     *
+     * Asked of every operation that reads a body, because the contract
+     * declares the 400 for every one of them, and a status the document
+     * promises but no test provokes is a claim rather than a contract. The
+     * three cases below are exactly the three request DTOs built through
+     * JsonBody::of(), which is the only place this refusal is raised.
      */
-    public function test_a_body_that_is_not_json_is_a_400(): void
+    #[DataProvider('theOperationsThatReadABody')]
+    public function test_a_body_that_is_not_json_is_a_400(string $method, string $uri): void
     {
         $this->givenAStockedMachine();
 
-        $this->requestWithRawBody('POST', '/api/machine/coins', '{"coin": ');
+        $this->requestWithRawBody($method, $uri, '{"broken": ');
 
         self::assertResponseStatusCodeSame(400);
         self::assertResponseHeaderSame('content-type', 'application/problem+json');
         self::assertSame('malformed_json', $this->responseBody()['code']);
     }
 
-    public function test_a_json_body_that_is_not_an_object_is_a_400(): void
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function theOperationsThatReadABody(): iterable
+    {
+        yield 'insert a coin' => ['POST', '/api/machine/coins'];
+        yield 'buy a product' => ['POST', '/api/machine/purchases'];
+        yield 'service the machine' => ['PUT', '/api/machine/service'];
+    }
+
+    /**
+     * The fourth writing endpoint, and the reason it declares no 400:
+     * RETURN-COIN takes no argument, so there is no body to fail at reading
+     * and an unreadable one changes nothing. Asserting it keeps the omission
+     * from being a story — the day this controller starts parsing a payload,
+     * this test goes red and the contract needs the 400 the other three have.
+     */
+    public function test_the_endpoint_that_reads_no_body_is_unmoved_by_one_that_is_not_json(): void
     {
         $this->givenAStockedMachine();
 
-        $this->requestWithRawBody('POST', '/api/machine/coins', '"0.25"');
+        $this->requestWithRawBody('POST', '/api/machine/coins/return', '{"broken": ');
+
+        self::assertResponseStatusCodeSame(200);
+    }
+
+    /**
+     * Parsing and being an object are two different promises, and all three
+     * request bodies make the second one: their schemas declare type: object.
+     * A payload can parse perfectly and still be a list, so the case is asked
+     * of every operation rather than of the one that happened to have it.
+     */
+    #[DataProvider('theOperationsThatReadABody')]
+    public function test_a_json_body_that_is_not_an_object_is_a_400(string $method, string $uri): void
+    {
+        $this->givenAStockedMachine();
+
+        $this->requestWithRawBody($method, $uri, '[]');
 
         self::assertResponseStatusCodeSame(400);
         self::assertSame('malformed_json', $this->responseBody()['code']);
