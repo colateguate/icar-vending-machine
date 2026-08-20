@@ -105,10 +105,11 @@ Suppressing without justification is cheating. Leaving a warning nobody will act
 
 ## What the pipeline checks
 
-Six jobs, all blocking:
+Seven jobs, all blocking:
 
 | Job | Question |
 |---|---|
+| Dependency advisories | Does anything in `composer.lock` have a published security advisory? |
 | Code style | Does it follow the agreed style? |
 | Static analysis | PHPStan at `max`, no baseline |
 | Architecture | Deptrac: does the dependency rule still hold? |
@@ -116,7 +117,11 @@ Six jobs, all blocking:
 | Tests | All four suites, with warnings and deprecations failing the build |
 | Mutation | Would the tests catch a regression? |
 
-`make qa` runs everything except mutation, which is a separate target because it takes four minutes.
+`make qa` runs neither the mutation job nor the audit, for two unrelated reasons: mutation takes four minutes, and the audit asks Packagist a question, which would make the local quality gate need a network to pass. A gate that sits outside `qa` for a reason said out loud is a precedent this repository already set rather than a new exception.
+
+**The audit is the one job on a schedule**, and that is the half a push-triggered pipeline cannot give: an advisory is published against a dependency nobody has touched in weeks, so a pipeline that only runs on push reports the risk at the moment least likely to be looking. It runs weekly, on the default branch. It is also the only job whose verdict depends on a service we do not operate, and "Packagist did not answer" arrives looking exactly like "the answer was bad" — the schedule is what separates them, because a transient failure is green again next week and an advisory is still there.
+
+**Dependabot was considered and deliberately is not here.** It answers a different question: it opens pull requests that move versions forward, where `composer audit` fails a build that would ship a known-vulnerable one. The two compose well, and the real decision is whether this repository wants automated pull requests arriving in it. This one, whose git log is part of what it delivers, does not.
 
 **Schema drift** is worth a sentence, because it guards a hole nothing else sees: the suites build their schema from the mapping, so a migration that drifted would leave them green and break the first real deployment. That job migrates a throwaway database and validates it against the mapping.
 
