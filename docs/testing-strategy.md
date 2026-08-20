@@ -11,8 +11,8 @@ A test's level is decided by **the question it answers**, never by the machinery
 | `unit` | 289 | no | none — the aggregate is built directly | Are the business rules correct? |
 | `application` | 36 | no | in-memory | Does the use case orchestrate correctly? |
 | `integration` | 43 | yes | Doctrine + real SQLite | Does the adapter honour the port? |
-| `acceptance` | 80 | yes | Doctrine + real SQLite | Does it work end to end, error contract included? |
-| **total** | **448** | | | 3 096 assertions |
+| `acceptance` | 86 | yes | Doctrine + real SQLite | Does it work end to end, error contract included? |
+| **total** | **454** | | | 3 136 assertions |
 
 Run one at a time — `make test-unit` is the fast loop, and it is fast because it touches nothing:
 
@@ -52,7 +52,7 @@ This is the answer to "how do you know your in-memory double isn't lying?".
 
 ## The published contract, used as an assertion
 
-Two gates keep `docs/openapi.yaml` from drifting away from the API. `ApiTestCase` checks every response it produces against the document — status declared, content type offered, body satisfying the schema — which is eighty-three responses and no new HTTP calls. `OpenApiErrorCoverageTest` then walks the error catalog against the document in both directions, because the first gate can only check the failures the suite happens to provoke, and `concurrent_modification` needs two connections racing.
+Two gates keep `docs/openapi.yaml` from drifting away from the API. `ApiTestCase` checks every response it produces against the document — status declared, content type offered, body satisfying the schema — which is eighty-nine responses and no new HTTP calls. `OpenApiErrorCoverageTest` then walks the error catalog against the document in both directions, because the first gate can only check the failures the suite happens to provoke — and what a suite provokes is a choice, not a given. `concurrent_modification` was the standing example of a failure it never provoked, until a test swapped the repository port for one that loses every race; the second gate is what kept that error documented for the release in which nothing produced it.
 
 Why a written document with a test rather than one generated from the code — and why not a Postman collection — is [ADR-0015](adr/0015-openapi-as-a-tested-contract.md). What belongs here is whether the gate works.
 
