@@ -741,9 +741,9 @@ components:
       summary: Two callers, one machine — the stale write loses
       value:
         type: /problems/concurrent-modification
-        title: Concurrent modification
+        title: The machine changed underneath you
         status: 409
-        detail: The machine was modified by another request. Nothing was applied; read it again and retry.
+        detail: 'The machine "lobby-01" was changed by someone else while this request was being handled.'
         code: concurrent_modification
 
   responses:

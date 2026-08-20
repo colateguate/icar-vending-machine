@@ -220,7 +220,7 @@ No attributes in the core either: routes live in YAML, handlers are registered b
 ## Tests
 
 ```bash
-make test           # 448 tests, 3 096 assertions
+make test           # 454 tests, 3 136 assertions
 make test-unit      # 289 of them, no kernel and no database
 make qa             # style + PHPStan max + Deptrac + schema drift + tests
 make test-mutation  # Infection over Domain + Application — MSI 100%
@@ -231,7 +231,7 @@ make test-mutation  # Infection over Domain + Application — MSI 100%
 | unit | 289 | Are the business rules correct? |
 | application | 36 | Does the use case orchestrate correctly? |
 | integration | 43 | Does the adapter honour the port? |
-| acceptance | 80 | Does it work end to end, error contract included? |
+| acceptance | 86 | Does it work end to end, error contract included? |
 
 The three examples of the brief exist as executable specification at four levels. The repository port has **one abstract contract test that both adapters must pass**, written with the first adapter long before the second existed — which is the answer to "how do you know your in-memory double is not lying?".
 
