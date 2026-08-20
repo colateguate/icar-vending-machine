@@ -238,6 +238,10 @@ paths:
         The single refund path. It returns the very coins that were inserted,
         not an equivalent amount composed from the reserve, so it can never be
         refused for lack of change.
+
+        The one writing operation with no 400: the button takes no argument,
+        so there is no body to fail at reading and an unreadable one is
+        ignored rather than refused.
       operationId: returnCoins
       responses:
         '200':
@@ -343,6 +347,8 @@ paths:
                         coins: []
                         amount: "0.00"
                       exactChangeOnly: false
+        '400':
+          $ref: '#/components/responses/MalformedJson'
         '404':
           description: This machine stocks no product under that selector.
           content:
@@ -504,6 +510,8 @@ paths:
                         coins: []
                         amount: "0.00"
                       exactChangeOnly: false
+        '400':
+          $ref: '#/components/responses/MalformedJson'
         '409':
           description: A concurrent change was refused by optimistic locking.
           content:
