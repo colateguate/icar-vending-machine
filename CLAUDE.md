@@ -109,7 +109,7 @@ There is **no Deptrac for the frontend**. The rule is upheld by review (`fronten
 
 **Errors are read by `code`, never by `detail`.** The `ErrorCatalog` codes (`insufficient_funds`, `exact_change_required`, …) are the stable interface; `detail` is English prose that may be reworded without warning.
 
-**Frontend test levels**: component tests (Vitest + Testing Library, mocking the `services/` module) and module tests (`services/`, mocking `fetch`). The seam is the module, never `global.fetch` inside a component test. Queries go by role and accessible name — `data-testid` is a last resort the test has to justify, and accessible markup is testable markup. `frontend/e2e/` is reserved for Playwright and deliberately empty. No mutation gate and no coverage threshold here: the evaluated suite is the backend's.
+**Frontend test levels**: component tests (Vitest + Testing Library, mocking the `services/` module) and module tests (`services/`, mocking `fetch`). The seam is the module, never `global.fetch` inside a component test. Queries go by role and accessible name — `data-testid` is a last resort the test has to justify, and accessible markup is testable markup. `frontend/e2e/` holds the fifth level: five Playwright specs against the running stack, for what jsdom structurally cannot see — a decorative overlay swallowing clicks, an accessible name mangled by CSS, and the three things the panel's nginx decides. The bar for adding to it is in `frontend/e2e/README.md`: only what **needs** a browser or the real image, because a case Vitest can answer is a slow test for no reason. It sits outside `make qa` (it needs `make up` first) and runs as its own CI job (ADR-0017). No mutation gate and no coverage threshold on this half: the evaluated suite is the backend's.
 
 ## Commands
 
@@ -125,6 +125,7 @@ make front-dev      # the panel against the API on :8000
 make front-test     # Vitest
 make front-lint     # ESLint, accessibility rules included
 make front-build    # production bundle
+make front-e2e      # browser smoke against the running stack (needs `make up`)
 ```
 
 The whole repo is driven from `make`, both halves. The `front-*` targets warn

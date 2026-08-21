@@ -3,7 +3,7 @@
 BACKEND := backend
 FRONTEND := frontend
 
-.PHONY: help up down reset test test-unit test-application test-integration test-acceptance qa schema-check cs-fix test-mutation front-install front-dev front-test front-lint front-build _ensure-backend _ensure-node _ensure-frontend
+.PHONY: help up down reset test test-unit test-application test-integration test-acceptance qa schema-check cs-fix test-mutation front-install front-dev front-test front-lint front-build front-e2e _ensure-backend _ensure-node _ensure-frontend
 
 help:
 	@echo "make up               - build and run the stack (API on http://localhost:8000)"
@@ -24,6 +24,7 @@ help:
 	@echo "make front-test       - panel test suite"
 	@echo "make front-lint       - ESLint, accessibility rules included"
 	@echo "make front-build      - production bundle"
+	@echo "make front-e2e        - browser smoke against the running stack (needs 'make up')"
 
 # The whole thing, from a clone with no PHP installed: builds the image,
 # migrates, provisions the machine and serves the API on :8000.
@@ -119,6 +120,15 @@ front-lint: _ensure-frontend
 
 front-build: _ensure-frontend
 	cd $(FRONTEND) && npm run build
+
+# The fifth test level, and the only target that needs something already
+# running: these drive a real browser against the stack rather than a mock.
+# Deliberately outside `qa` for that reason, the same way mutation testing is
+# outside it for its own — a gate that cannot pass on a bare checkout does not
+# belong in the one command that must.
+front-e2e: _ensure-frontend
+	@curl -sf http://localhost:3000/ >/dev/null || { echo "Nothing is answering on :3000 - run 'make up' first."; exit 1; }
+	cd $(FRONTEND) && npm run test:e2e
 
 _ensure-backend:
 	@test -d $(BACKEND)/vendor || { echo "Backend dependencies not installed yet - run 'composer install' in backend/."; exit 1; }

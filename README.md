@@ -237,6 +237,7 @@ make test-mutation  # Infection over Domain + Application — MSI 100%
 
 make front-test     # the panel's own 106, in jsdom
 make front-lint     # ESLint, accessibility rules included
+make front-e2e      # five in a real browser, against a running `make up`
 ```
 
 | Suite | Tests | Answers |
@@ -314,7 +315,7 @@ And what was deliberately *not* built, which is the more interesting half:
 
 ## Decision records
 
-Sixteen ADRs, each written in the same commit as the decision it records, each with real alternatives and at least one honest downside.
+Seventeen ADRs, each written in the same commit as the decision it records, each with real alternatives and at least one honest downside.
 
 **[Index →](docs/adr/)** · The four worth reading first: [one aggregate](docs/adr/0005-single-aggregate-root.md) · [refusing a sale without change](docs/adr/0007-reject-purchase-when-change-unavailable.md) · [the aggregate as one row](docs/adr/0008-doctrine-sqlite-xml-mapping.md) · [the error contract](docs/adr/0012-rfc7807-errors-with-explicit-status-rule.md)
 
@@ -338,7 +339,7 @@ docs/
   openapi.yaml         the API contract, validated against real responses by the suite
   architecture.md      the hexagon, and a purchase traced through it
   testing-strategy.md  what each of the four suites is for
-  adr/                 sixteen decision records
+  adr/                 seventeen decision records
 frontend/
   src/                 the panel: pages · hooks · components · services
   docker/nginx.conf    serves the build, and forwards /api to the backend
