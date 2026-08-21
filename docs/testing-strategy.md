@@ -2,7 +2,9 @@
 
 The brief asks for tests that "demonstrate your understanding of what and how to test at different levels". This is the written answer.
 
-## Four suites, four questions
+Most of it is about the backend, because that is what is being evaluated and where the levels have teeth. The panel has three levels of its own and they are here too, further down, in the proportion the deliverable deserves rather than in the proportion that would look thorough.
+
+## The backend: four suites, four questions
 
 A test's level is decided by **the question it answers**, never by the machinery it happens to need.
 
@@ -109,9 +111,27 @@ The rule that came out of it:
 
 Suppressing without justification is cheating. Leaving a warning nobody will act on is worse than having none, because it trains people to stop reading warnings. Suppressing with the proof and the expiry written next to it is triage.
 
+## The panel: three more levels, and a bar for the last one
+
+The frontend is a thin client with no business logic, so its levels answer smaller questions — but they are chosen by the same rule, which is the question each one is the cheapest place to ask.
+
+| Level | Where | Answers |
+|---|---:|---|
+| Module | `frontend/src/services/` | Does the client turn a response — or a `problem+json` — into what the panel expects? |
+| Component | `frontend/src/**/*.test.jsx` | Does this piece render what it is given, and emit what it is asked to? |
+| Browser | `frontend/e2e/` | Does it still work when a real browser applies the stylesheet and a real nginx serves it? |
+
+Two rules do most of the work. **The mock seam is the module**, never `global.fetch` — `services/` is the boundary between the panel and the contract, so mocking it is mocking the port, which is the doctrine the backend already applies. `fetch` is stubbed in exactly one file, the one that has to prove the translation from a problem document into an error object. And **queries go by role and accessible name**, never by test id where a role exists: if a control cannot be found by its name, the markup is the finding.
+
+The third level is the one that needed a bar, because it is the one that rots. jsdom applies no stylesheet, performs no layout and has no accessibility tree, so an entire class of regression is invisible to the two levels above it — a decorative overlay that swallows clicks, a `text-transform` that renames a control in the accessibility tree, an nginx directive that stops forwarding `/api`. Those are what `frontend/e2e/` is for, and the rule for what may join them is written where they live ([`frontend/e2e/README.md`](../frontend/e2e/README.md)): only what **needs** a browser or the real image, because anything Vitest can answer is a slow test for no reason. Five specs, and every one of them was watched failing before it was kept ([ADR-0017](adr/0017-browser-smoke-for-what-jsdom-cannot-see.md)).
+
+**There is no mutation gate and no coverage threshold on this half**, and that is a scoping decision rather than an oversight: the evaluated suite is the backend's, and MSI on a component that renders a string it was handed would measure the test framework.
+
 ## What the pipeline checks
 
-Seven jobs, all blocking:
+Ten jobs, all blocking, in two workflows — one per half, because GitHub applies path filters per workflow rather than per job.
+
+Seven of them are the backend's:
 
 | Job | Question |
 |---|---|
@@ -122,6 +142,14 @@ Seven jobs, all blocking:
 | Schema drift | Do the migration and the XML mapping describe the same table? |
 | Tests | All four suites, with warnings and deprecations failing the build |
 | Mutation | Would the tests catch a regression? |
+
+And three are the panel's:
+
+| Job | Question |
+|---|---|
+| Dependency advisories | Same question of `package-lock.json`, dev dependencies included |
+| Lint, tests and build | ESLint with the accessibility rules, Vitest, and a bundle that actually builds |
+| Browser smoke | Does it work in a browser, against the images this repository ships? |
 
 `make qa` runs neither the mutation job nor the audit, for two unrelated reasons: mutation is the only gate that needs coverage instrumentation, and the audit asks Packagist a question, which would make the local quality gate need a network to pass. A gate that sits outside `qa` for a reason said out loud is a precedent this repository already set rather than a new exception.
 
