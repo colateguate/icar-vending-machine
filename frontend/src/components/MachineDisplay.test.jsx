@@ -35,6 +35,7 @@ describe('MachineDisplay', () => {
    */
   it.each([
     ['unsupported_coin', 'Coin rejected'],
+    ['coin_not_accepted', 'Coin no longer taken'],
     ['invalid_money_amount', 'Coin rejected'],
     ['unknown_product', 'Unknown selection'],
     ['invalid_product_selector', 'Unknown selection'],

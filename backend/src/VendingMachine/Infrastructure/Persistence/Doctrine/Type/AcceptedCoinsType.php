@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\VendingMachine\Infrastructure\Persistence\Doctrine\Type;
 
+use App\VendingMachine\Domain\Exception\UnsupportedCoin;
 use App\VendingMachine\Domain\Money\AcceptedCoins;
 use App\VendingMachine\Domain\Money\CoinDenomination;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
@@ -76,9 +77,19 @@ final class AcceptedCoinsType extends Type
                 // application. Either way it is not ours to interpret, and a
                 // loud failure beats a machine that quietly takes a coin less
                 // than the row says.
-                return \is_int($denomination)
-                    ? CoinDenomination::fromCents($denomination)
-                    : throw ValueNotConvertible::new($cents, AcceptedCoins::class);
+                //
+                // UnsupportedCoin is caught rather than allowed through, and
+                // that is the whole point of the catch: it is a catalogued
+                // domain failure that answers 422, which would blame the caller
+                // for a row they never wrote. A database we cannot read is our
+                // bug, and our bugs are 500s.
+                try {
+                    return \is_int($denomination)
+                        ? CoinDenomination::fromCents($denomination)
+                        : throw ValueNotConvertible::new($cents, AcceptedCoins::class);
+                } catch (UnsupportedCoin $unreadable) {
+                    throw ValueNotConvertible::new($cents, AcceptedCoins::class, $unreadable->getMessage(), $unreadable);
+                }
             },
             $cents,
         ));
