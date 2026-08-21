@@ -118,7 +118,7 @@ make test           # all four PHPUnit suites
 make test-unit      # fast domain suite
 make qa             # both halves; every CI gate that needs no network
 make test-mutation  # Infection on Domain + Application
-make up             # docker compose up (the panel joins the stack in ticket 13b)
+make up             # the whole stack: panel on :3000, API on :8000
 
 make front-install  # npm ci
 make front-dev      # the panel against the API on :8000

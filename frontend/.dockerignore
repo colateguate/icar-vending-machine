@@ -1,0 +1,32 @@
+# What must never enter the build context. The reasoning is the backend's, in
+# the file next door: a fat context is slow to send to the daemon, and host
+# state copied into the image quietly overrides what the image built for
+# itself.
+
+# Installed by the image itself, from the lock file, for the right platform.
+# It is also the single largest directory in this repository, so leaving it out
+# is most of the difference between a context measured in megabytes and one
+# measured in hundreds.
+node_modules/
+
+# The bundle the image builds for itself. A stale one from the host is the
+# worst possible thing to ship: it looks like a build and is a memory.
+dist/
+
+# Tool output that means nothing inside the image.
+coverage/
+
+# Local overrides. The container is configured by compose, not by these — and
+# here the omission would bite harder than it does next door: Vite reads
+# .env.local itself during `npm run build`, so a developer's own VITE_API_URL
+# would be frozen into a production bundle without the build saying a word.
+.env
+.env.*
+
+# Reserved for Playwright and empty (ticket 24). The runtime image serves
+# static files; it does not drive a browser.
+e2e/
+
+# Not part of the application.
+Dockerfile
+.dockerignore

@@ -14,6 +14,10 @@ La cara: los tres overlays decorativos —`.machine__window::after` (MachinePage
 - [ ] Un test que compra un producto **haciendo clic donde está el producto en pantalla**, no despachando el evento al nodo. Debe ponerse rojo si se quita el `pointer-events: none` de `.machine__window::after` — y hay que comprobarlo quitándolo, no suponerlo
 - [ ] Un test que comprueba el nombre accesible de un control contra el árbol del navegador de verdad, de forma que un `text-transform` reintroducido lo ponga rojo. Mismo requisito: demostrado mutando, no afirmado
 - [ ] Los tests corren contra la pila levantada, no contra un mock. Reutilizan el contenedor del ticket 13b
+- [ ] **Los tres comportamientos que el 13b metió y que nada vigila** (identificados al revisarlo, ya con el stack en pie):
+  - **La ruta llega intacta al backend.** `proxy_pass http://backend:8080` no lleva parte de URI, así que `/api/machine` llega como `/api/machine`. Una barra de más y el backend ve `/machine` y contesta 404 — un carácter que rompe la aplicación entera sin poner rojo ni un test
+  - **Una ruta profunda cae en `index.html`** y no en el 404 de nginx. Hoy hay una sola pantalla y parece ceremonia; es lo que sostiene el primer deep link que alguien añada
+  - **`index.html` no se cachea y los assets sí.** Si el documento se cachea, tras un despliegue el navegador sigue sirviendo uno que apunta a assets que ya no existen. Ojo al escribirlo: las cabeceras salen de un `map` porque un `add_header` dentro de un `location` **anula** los heredados del servidor — se descubrió midiendo, y es justo el tipo de cosa que un test de humo debe fijar
 - [ ] Queda escrito en el `README.md` de `e2e/` qué pertenece a este nivel y qué no: aquí solo va lo que **necesita** un navegador de verdad. Un caso que Vitest pueda contestar y se escriba aquí es un test lento sin motivo
 - [ ] El job de CI del ticket 18 sabe si estos corren o no, y la respuesta está razonada (coste de arrancar navegador frente a lo que cubren)
 

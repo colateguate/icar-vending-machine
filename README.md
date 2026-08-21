@@ -8,7 +8,7 @@ docker compose exec backend php bin/console app:machine:run "1, 0.25, 0.25, GET-
 # -> SODA
 ```
 
-> **Status.** The backend is complete: domain, use cases, HTTP API, CLI, persistence, container. The React panel is the remaining work — tickets 16–17 of the [backlog](.claude/tasks/vending-machine-challenge/), which also carries a handful of smaller items: the panel's own container, and the follow-ups the release review left behind.
+> **Status.** Both halves are built and both are containerised: domain, use cases, HTTP API, CLI and persistence on one side; the React panel, its own image and a reverse proxy on the other, with `make up` serving the pair. What is left in the [backlog](.claude/tasks/vending-machine-challenge/) is follow-up the reviews turned up rather than anything the brief asked for.
 
 ---
 
@@ -40,7 +40,9 @@ There is no database service to install. The machine lives in SQLite ([ADR-0008]
 make up
 ```
 
-That builds the image, applies migrations, provisions a machine with the catalogue of the brief, and serves the API on **http://localhost:8000**. It is ready when the healthcheck goes green:
+That builds both images, applies migrations, provisions a machine with the catalogue of the brief, and serves the panel on **http://localhost:3000** and the API on **http://localhost:8000**.
+
+Two ports, and only the first is needed: the panel's nginx forwards `/api` to the backend, so the screen and the API answer on one origin. The API keeps its own port because the brief's examples are curl commands. It is ready when the healthcheck goes green:
 
 ```bash
 curl localhost:8000/api/health
