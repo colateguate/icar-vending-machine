@@ -235,7 +235,7 @@ make test-unit      # 289 of them, no kernel and no database
 make qa             # both halves; every CI gate that needs no network
 make test-mutation  # Infection over Domain + Application — MSI 100%
 
-make front-test     # the panel's own 130, in jsdom
+make front-test     # the panel's own 131, in jsdom
 make front-lint     # ESLint, accessibility rules included
 make front-e2e      # five in a real browser, against a running `make up`
 ```

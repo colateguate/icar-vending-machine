@@ -10,6 +10,12 @@
 //   "^X.Y.Z"    that version or above, without leaving the major
 //   "A || B"    either of them
 //
+// Prereleases are ranked as their release: `22.22.2-rc.1` counts as 22.22.2,
+// where semver would place it below. Pinned by a test rather than left to be
+// found, and deliberately not fixed — nobody develops against a Node release
+// candidate here, and the arm of semver that handles them is the arm this file
+// exists to avoid reimplementing.
+//
 // The `^` is the one that earns this file. jsdom asks for
 // `^22.22.2 || ^24.15.0 || >=26.0.0`, and the difference between that and the
 // `>=22.22.2` the manifest used to declare is not pedantry: `>=` accepts Node
@@ -28,7 +34,7 @@ const parts = (text) => {
 
 const rank = ([major, minor, patch]) => major * 1e6 + minor * 1e3 + patch;
 
-const clause = (text) => {
+const parseClause = (text) => {
   const written = text.trim().match(/^(>=|\^)\s*([0-9]+(?:\.[0-9]+){0,2})$/);
 
   if (!written) {
@@ -48,7 +54,7 @@ const clause = (text) => {
  * never be reported as it.
  */
 export function satisfies(version, range) {
-  const clauses = range.split('||').map(clause);
+  const clauses = range.split('||').map(parseClause);
 
   if (clauses.includes(UNREADABLE)) {
     return UNREADABLE;

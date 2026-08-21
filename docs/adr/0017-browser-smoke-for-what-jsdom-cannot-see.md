@@ -49,7 +49,7 @@ Review catches what is legible in a diff. These are not.
 
 It would not work, which settles it before the cost question. jsdom parses CSS and can report computed styles, but it performs **no layout and no hit testing**: there is no geometry, so nothing is ever on top of anything, and `elementFromPoint` has no meaning. The overlay failure is invisible to it in principle rather than by configuration. The accessibility-tree failure fares no better: jsdom has no accessibility tree.
 
-It would also slow down all 115 tests to answer none of these questions.
+It would also slow down all 131 tests to answer none of these questions.
 
 ### Why Playwright and not Cypress
 

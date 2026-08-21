@@ -15,13 +15,13 @@ const JSDOM = '^22.22.2 || ^24.15.0 || >=26.0.0';
 
 describe('satisfies', () => {
   it.each([
-    ['22.22.2', true, 'the floor itself'],
-    ['22.30.1', true, 'above the floor, same major'],
-    ['24.15.0', true, 'the second alternative'],
-    ['26.4.0', true, 'the open-ended one'],
-    ['99.0.0', true, 'anything above the open-ended one'],
-  ])('accepts %s — %s', (version, expected) => {
-    expect(satisfies(version, JSDOM)).toBe(expected);
+    ['22.22.2', 'the floor itself'],
+    ['22.30.1', 'above the floor, same major'],
+    ['24.15.0', 'the second alternative'],
+    ['26.4.0', 'the open-ended one'],
+    ['99.0.0', 'anything above the open-ended one'],
+  ])('accepts %s — %s', (version) => {
+    expect(satisfies(version, JSDOM)).toBe(true);
   });
 
   /**
@@ -50,6 +50,16 @@ describe('satisfies', () => {
   it('reads a range that omits the patch', () => {
     expect(satisfies('22.11.0', '>=22.12')).toBe(false);
     expect(satisfies('22.12.0', '>=22.12')).toBe(true);
+  });
+
+  /**
+   * Not semver, and this is where the difference shows: a release candidate is
+   * ranked as the release it precedes, where semver places it below. Pinned
+   * because a reviewer asked what happens here, and "nobody knows" was the
+   * honest answer at the time.
+   */
+  it('ranks a release candidate as the release it precedes', () => {
+    expect(satisfies('22.22.2-rc.1', '^22.22.2')).toBe(true);
   });
 
   /**
