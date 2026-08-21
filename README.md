@@ -30,7 +30,7 @@ docker compose exec backend php bin/console app:machine:run "1, 0.25, 0.25, GET-
 **Without Docker:**
 
 - PHP >= 8.2 with `pdo_sqlite`, and Composer 2 — for the API and the CLI
-- Node >= 22.22.2 and npm — only to run the panel outside its image; below that floor the `front-*` targets warn rather than stop
+- Node `^22.22.2 || ^24.15.0 || >=26.0.0` and npm — only to run the panel outside its image. It is jsdom's range, not a floor; outside it the `front-*` targets warn rather than stop
 - GNU Make is optional; every target is a one-line wrapper you can read in the [`Makefile`](Makefile)
 
 There is no database service to install. The machine lives in SQLite ([ADR-0008](docs/adr/0008-doctrine-sqlite-xml-mapping.md)).
@@ -235,7 +235,7 @@ make test-unit      # 289 of them, no kernel and no database
 make qa             # both halves; every CI gate that needs no network
 make test-mutation  # Infection over Domain + Application — MSI 100%
 
-make front-test     # the panel's own 115, in jsdom
+make front-test     # the panel's own 130, in jsdom
 make front-lint     # ESLint, accessibility rules included
 make front-e2e      # five in a real browser, against a running `make up`
 ```
