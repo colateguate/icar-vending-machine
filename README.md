@@ -8,7 +8,7 @@ docker compose exec backend php bin/console app:machine:run "1, 0.25, 0.25, GET-
 # -> SODA
 ```
 
-> **Status.** Both halves are built and both are containerised: domain, use cases, HTTP API, CLI and persistence on one side; the React panel, its own image and a reverse proxy on the other, with `make up` serving the pair. What is left in the [backlog](.claude/tasks/vending-machine-challenge/) is follow-up the reviews turned up rather than anything the brief asked for.
+> **Status.** Complete. Both halves are built and containerised: domain, use cases, HTTP API, CLI and persistence on one side; the React panel, its own image and a reverse proxy on the other, with `make up` serving the pair. The backlog is empty — every ticket, including the follow-up the reviews turned up, is closed and lives in [`.claude/completed_tasks/`](.claude/completed_tasks/).
 
 ---
 
@@ -37,24 +37,31 @@ There is no database service to install. The machine lives in SQLite ([ADR-0008]
 
 ## Quick start
 
+**1.** Start the stack, and leave this terminal running — it stays in the foreground:
+
 ```bash
 make up
 ```
 
-That builds both images, applies migrations, provisions a machine with the catalogue of the brief, and serves the panel on **http://localhost:3000** and the API on **http://localhost:8000**.
+That builds both images, applies migrations and provisions a machine with the catalogue of the brief.
 
-Two ports, and only the first is needed: the panel's nginx forwards `/api` to the backend, so the screen and the API answer on one origin. The API keeps its own port because the brief's examples are curl commands. It is ready when the healthcheck goes green:
+**2.** In a **second terminal**, check it is ready:
 
 ```bash
 curl localhost:8000/api/health
 # {"status":"ok"}
 ```
 
+**3.** Open the panel at **http://localhost:3000** — or drive the machine from the terminal, next section.
+
+Two ports, and only the first is needed: the panel's nginx forwards `/api` to the backend, so the screen and the API answer on one origin. The API keeps its own port (**http://localhost:8000**) because the brief's examples are curl commands.
+
 Other targets:
 
 ```bash
 make down     # stop it, keep the machine
-make reset    # stop it and throw the machine away — the way to undo an evaluator's shopping
+make reset    # stop it and throw the machine away — if your shopping emptied a slot
+              # or SERVICE replaced the catalogue, the next `make up` restocks it
 ```
 
 <details>
