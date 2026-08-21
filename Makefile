@@ -103,8 +103,8 @@ test-mutation: _ensure-backend
 		echo "No Domain/Application code yet - skipping mutation testing (arrives with ticket 04)."; \
 	fi
 
-# The panel's targets. `make up` is not among them: the frontend joins the
-# compose stack in ticket 13b and inherits that target for free.
+# The panel's targets. `make up` is not among them: the panel is a service of
+# the compose stack, so that target already brings it up.
 front-install: _ensure-node
 	cd $(FRONTEND) && npm ci
 
