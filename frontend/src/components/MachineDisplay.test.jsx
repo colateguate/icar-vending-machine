@@ -27,8 +27,8 @@ describe('MachineDisplay', () => {
    * component says in comments which of them is which, and this says what each
    * one puts on the screen.
    *
-   * These are the eight codes whose sentence is fixed. The other three read an
-   * extension and have their own tests below, both branches each — eleven, the
+   * These are the nine codes whose sentence is fixed. The other three read an
+   * extension and have their own tests below, both branches each — twelve, the
    * length of the catalogue. `product_out_of_stock` appears again further down
    * for a different question: that one screen shows the message or the amount
    * and never both.
