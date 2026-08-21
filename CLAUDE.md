@@ -136,7 +136,7 @@ would be a decision with its own ticket rather than a guard.
 
 Direct equivalents from `backend/`: `vendor/bin/phpunit --testsuite unit|application|integration|acceptance`, `vendor/bin/phpstan analyse`, `vendor/bin/deptrac analyse` (config auto-detected from `deptrac.php`), `vendor/bin/php-cs-fixer fix`. Note: PHPUnit config is `phpunit.dist.xml` (PHPUnit 11 recipe convention).
 
-Mutation testing **does run locally**: Xdebug is installed with `xdebug.mode=off`, which is why it costs nothing on every other command, and the `make test-mutation` target turns coverage on for its own run (`XDEBUG_MODE=coverage`). It takes ~4 minutes and it is the only gate not in `make qa` for that reason — run it whenever a change lands in `Domain/` or `Application/`, which is the scope Infection is configured for.
+Mutation testing **does run locally**: Xdebug is installed with `xdebug.mode=off`, which is why it costs nothing on every other command, and the `make test-mutation` target turns coverage on for its own run (`XDEBUG_MODE=coverage`). It takes about 37 seconds on 24 cores — it took 3m 53s until `--threads=max` was found to mean one thread on Windows — and it stays out of `make qa` because it is the only gate that needs coverage instrumentation, not because of the clock. Run it whenever a change lands in `Domain/` or `Application/`, which is the scope Infection is configured for.
 
 `make schema-check` (also part of `make qa`) migrates a throwaway SQLite file and runs `doctrine:schema:validate`, so the mapping and the migration cannot drift apart in silence.
 

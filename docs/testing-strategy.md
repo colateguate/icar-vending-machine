@@ -77,7 +77,7 @@ Two requests sit outside the contract, through a method named `requestOutsideThe
 ## Mutation testing, and why not line coverage
 
 ```bash
-make test-mutation     # ~4 minutes
+make test-mutation     # 37s on 24 cores, and it used to be 3m 53s
 ```
 
 Line coverage tells you which code **ran**. It cannot tell you whether anything would have noticed if that code changed. Infection answers the second question: it edits the code in small, plausible ways and checks whether some test fails.
@@ -123,7 +123,9 @@ Seven jobs, all blocking:
 | Tests | All four suites, with warnings and deprecations failing the build |
 | Mutation | Would the tests catch a regression? |
 
-`make qa` runs neither the mutation job nor the audit, for two unrelated reasons: mutation takes four minutes, and the audit asks Packagist a question, which would make the local quality gate need a network to pass. A gate that sits outside `qa` for a reason said out loud is a precedent this repository already set rather than a new exception.
+`make qa` runs neither the mutation job nor the audit, for two unrelated reasons: mutation is the only gate that needs coverage instrumentation, and the audit asks Packagist a question, which would make the local quality gate need a network to pass. A gate that sits outside `qa` for a reason said out loud is a precedent this repository already set rather than a new exception.
+
+The first of those reasons used to be "it takes four minutes", and that number is gone: it was four minutes because `--threads=max` silently resolved to one thread, and asking `nproc` instead brought the same run down to 37 seconds. What remains is the honest reason rather than the convenient one — the run costs about what the rest of `qa` costs put together, on a machine with 24 cores, and proportionally more on a machine without them.
 
 **The audit is the one job on a schedule**, and that is the half a push-triggered pipeline cannot give: an advisory is published against a dependency nobody has touched in weeks, so a pipeline that only runs on push reports the risk at the moment least likely to be looking. It runs weekly, on the default branch. It is also the only job whose verdict depends on a service we do not operate, and "Packagist did not answer" arrives looking exactly like "the answer was bad" — the schedule is what separates them, because a transient failure is green again next week and an advisory is still there.
 
