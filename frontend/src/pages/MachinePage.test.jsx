@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiProblem } from '../services/problemDetails';
-import { getState, insertCoin, purchase, returnCoins } from '../services/machineApi';
+import { getState, insertCoin, purchase, returnCoins, service } from '../services/machineApi';
 import MachinePage from './MachinePage';
 
 /**
@@ -18,6 +18,7 @@ vi.mock('../services/machineApi', () => ({
   insertCoin: vi.fn(),
   purchase: vi.fn(),
   returnCoins: vi.fn(),
+  service: vi.fn(),
 }));
 
 const bag = (amount, coins = []) => ({ coins, amount });
@@ -175,6 +176,46 @@ describe('MachinePage', () => {
 
     expect(screen.getByRole('button', { name: /WATER/ })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'RETURN-COIN' })).toBeDisabled();
+  });
+
+  /**
+   * The technician's half of the panel, wired end to end: the door opens, the
+   * form carries what the machine reported, and what comes back replaces the
+   * state exactly as a purchase would.
+   */
+  it('services the machine from the drawer and shows what came back', async () => {
+    await openPanel();
+    const restocked = {
+      ...machine,
+      products: [{ selector: 'WATER', name: 'Water', price: '0.65', count: 20 }],
+    };
+    service.mockResolvedValue({ machine: restocked });
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('button', { name: 'Service' }));
+    await user.clear(screen.getByRole('spinbutton', { name: /WATER/ }));
+    await user.type(screen.getByRole('spinbutton', { name: /WATER/ }), '20');
+    await user.click(screen.getByRole('button', { name: 'Apply' }));
+
+    expect(await screen.findByRole('button', { name: /WATER Water 0.65 20 left/ })).toBeVisible();
+  });
+
+  /**
+   * `field` is an extension the API adds so a client can say which box is
+   * wrong instead of relaying a sentence. Reading it is the whole reason it is
+   * in the document.
+   */
+  it('names the field the machine refused, rather than relaying its prose', async () => {
+    await openPanel();
+    service.mockRejectedValue(
+      problem(422, 'invalid_request_payload', { field: 'products[0].count' }),
+    );
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('button', { name: 'Service' }));
+    await user.click(screen.getByRole('button', { name: 'Apply' }));
+
+    expect(await screen.findByText('Invalid: products[0].count')).toBeVisible();
   });
 
   it('says the machine is unreachable rather than blaming the customer', async () => {

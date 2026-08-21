@@ -2,7 +2,7 @@ import { StrictMode } from 'react';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { getState, insertCoin, purchase, returnCoins } from '../services/machineApi';
+import { getState, insertCoin, purchase, returnCoins, service } from '../services/machineApi';
 import { useMachine } from './useMachine';
 
 /**
@@ -14,6 +14,7 @@ vi.mock('../services/machineApi', () => ({
   insertCoin: vi.fn(),
   purchase: vi.fn(),
   returnCoins: vi.fn(),
+  service: vi.fn(),
 }));
 
 const bag = (amount, coins = []) => ({ coins, amount });
@@ -175,6 +176,28 @@ describe('useMachine', () => {
     });
 
     expect(result.current.tray).toEqual({ kind: 'return', returned });
+  });
+
+  /**
+   * A service visit answers with the machine and nothing else — nothing left
+   * the machine, so there is no tray to fill. Same absence of a refetch as
+   * every other action: the answer is the new state.
+   */
+  it('services the machine and takes the new state from the answer', async () => {
+    const { result } = await loaded();
+    const serviced = { ...idle, products: [{ selector: 'TEA', name: 'Tea', price: '0.80', count: 4 }] };
+    const products = [{ selector: 'TEA', name: 'Tea', price: '0.80', count: 4 }];
+    const changeReserve = [{ denomination: '0.25', count: 2 }];
+    service.mockResolvedValue({ machine: serviced });
+
+    await act(async () => {
+      await result.current.service(products, changeReserve);
+    });
+
+    expect(service).toHaveBeenCalledWith(products, changeReserve);
+    expect(result.current.machine).toEqual(serviced);
+    expect(result.current.tray).toBeNull();
+    expect(getState).toHaveBeenCalledTimes(1);
   });
 
   /**
