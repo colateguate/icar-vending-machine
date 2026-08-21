@@ -1,0 +1,71 @@
+/*
+ * The coin slot: the four coins the machine says it takes, and the mouth they
+ * go into. The coins are round and struck out of the same metal as the cabinet
+ * is not — light on dark, so the one part of the panel a customer is meant to
+ * touch first is also the brightest.
+ */
+
+.coin-slot__title {
+  color: var(--ink-dim);
+  font-size: 0.75rem;
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.16em;
+  margin: 0 0 var(--space-3);
+}
+
+.coin-slot__coins {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: center;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.coin {
+  aspect-ratio: 1;
+  /* Struck metal: lit from the top left, with a milled rim around the face. */
+  background:
+    radial-gradient(circle at 34% 28%, #fff 0%, var(--coin-face) 38%, var(--coin-edge) 100%);
+  border: 1px solid var(--coin-border);
+  border-radius: 50%;
+  box-shadow: var(--shadow-control), inset 0 0 0 3px rgb(255 255 255 / 35%);
+  color: var(--coin-ink);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  transition: transform 80ms ease, filter 120ms ease;
+  width: 3.25rem;
+}
+
+.coin:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+/* Pressed: the coin goes into the slot, so it drops rather than sinking. */
+.coin:active:not(:disabled) {
+  box-shadow: 0 0 0 rgb(0 0 0 / 55%), 0 1px 3px rgb(0 0 0 / 40%);
+  transform: translateY(2px);
+}
+
+.coin:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.6);
+  opacity: 0.5;
+}
+
+/* The mouth. Decorative and unlabelled — the coins above it are the control,
+   and this is only what tells you they are coins. */
+.coin-slot::after {
+  background: linear-gradient(180deg, #05070a 0%, var(--recess) 100%);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--bevel-sunken);
+  content: '';
+  display: block;
+  height: var(--space-2);
+  margin: var(--space-3) auto 0;
+  width: 70%;
+}

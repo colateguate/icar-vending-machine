@@ -20,6 +20,16 @@ frontend/node_modules/
 frontend/dist/
 frontend/coverage/
 
+# Playwright writes both of these on a failing run: traces, screenshots and the
+# HTML report. Artefacts of one execution, never of the repository.
+frontend/test-results/
+frontend/playwright-report/
+
+# Vite bakes every VITE_* variable into the shipped bundle, so a local override
+# is public the moment it is built. Ignored before there is one to leak.
+frontend/.env.local
+frontend/.env.*.local
+
 # OS / editor noise
 .DS_Store
 Thumbs.db

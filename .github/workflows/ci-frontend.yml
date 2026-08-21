@@ -1,0 +1,136 @@
+name: CI (frontend)
+
+# The frontend half of the pipeline. Its backend twin is ci-backend.yml, and that file
+# carries the reasoning the two share: why the workflow is split in two, why
+# both filter with `paths-ignore` naming the other half instead of `paths`
+# naming their own, why the schedule exists, why permissions are declared, and
+# why every action is pinned to a commit rather than a tag. None of it is
+# repeated here — two copies of an argument are two places for it to rot.
+on:
+  push:
+    paths-ignore:
+      - 'backend/**'
+  pull_request:
+    paths-ignore:
+      - 'backend/**'
+  schedule:
+    - cron: '0 6 * * 1'
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: frontend
+
+jobs:
+  dependencies:
+    name: Dependency advisories (npm audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+      # No `npm ci`: audit reads package-lock.json and asks the registry about
+      # the tree it describes, so it needs no node_modules — verified by running
+      # it in a directory holding nothing but the two manifests. Same shape as
+      # the backend's `composer audit --locked`, and the same consequence: this
+      # is the cheapest job in the pipeline because it downloads nothing.
+      #
+      # Development dependencies are audited too, and that is the whole job
+      # rather than a detail. `--omit=dev` would narrow this to the four
+      # packages that reach the bundle, out of the 359 the lockfile pins —
+      # a security gate that inspects one package in ninety and reports green
+      # is worse than no gate, because the tick is believed. What runs in CI
+      # against a checkout is vite, vitest and eslint, and those are exactly
+      # the 355 the flag would hide.
+      #
+      # The cost is the same one ci-backend.yml already accepted for Composer: an
+      # advisory against a build tool will block a deliverable that does not
+      # ship it. `--omit=dev` is the escape hatch if that day arrives, and it
+      # should be reached for deliberately rather than set now in advance of a
+      # problem nobody has had.
+      - run: npm audit
+
+  checks:
+    name: Lint, tests and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          # The 22 line, while package.json states the floor the dependency
+          # tree actually needs — 22.22.2, set by jsdom. The two say different
+          # things on purpose: `engines` is "below this we know it breaks",
+          # this is "this is the line the suite is known to pass on".
+          #
+          # A line rather than an exact patch, and that is the opposite trade
+          # from the actions above. Pinning a SHA is right because nothing
+          # should arrive there unreviewed; pinning 22.22.2 would freeze CI on
+          # one release and stop it collecting the security patches an LTS line
+          # exists to deliver. What must not drift is the floor, and the floor
+          # is declared once, in package.json, where npm can see it.
+          node-version: '22'
+          # `cache-dependency-path` is resolved from the workspace root, not
+          # from the `working-directory` default above — that default reaches
+          # `run:` steps and nothing else. Writing `package-lock.json` here
+          # would look right and silently cache nothing.
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      # One job with three steps rather than three jobs, because each job would
+      # pay for its own `npm ci` and the three gates together take less time
+      # than one install. The cost is that the first failing step hides the two
+      # behind it: a lint error means the test result for that push is unknown
+      # until it is fixed. Cheapest order first, so that is the common case.
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+  smoke:
+    name: Browser smoke against the built stack
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+
+      # Only the browser these specs run against. `--with-deps` because a bare
+      # runner has none of the shared libraries Chromium links, and only
+      # chromium because the accessibility tree is read over CDP, which no other
+      # engine speaks. A second browser here would cost a download and answer no
+      # question this suite asks.
+      - run: npx playwright install --with-deps chromium
+
+      # The real images, because two of these five specs are questions about
+      # the nginx inside one of them. `--wait` blocks until the backend's
+      # healthcheck is green, and the backend's entrypoint migrates and
+      # provisions the machine before answering it, so there is nothing to seed
+      # from here.
+      #
+      # It is affordable: a cold build of both images with no layer cache at all
+      # measures 33 seconds locally, and the run itself is under two.
+      - name: Bring up the stack
+        working-directory: .
+        run: docker compose up -d --build --wait
+
+      - run: npm run test:e2e
+
+      # Traces and screenshots, and only when there is something to look at. A
+      # failure here is about layout, hit testing or a header — the three things
+      # a log line describes worst.
+      - if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-trace
+          path: frontend/test-results/
+          retention-days: 7
+
+      - if: always()
+        working-directory: .
+        run: docker compose down -v

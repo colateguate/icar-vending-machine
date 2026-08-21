@@ -9,10 +9,10 @@ A test's level is decided by **the question it answers**, never by the machinery
 | Suite | Tests | Boots kernel | Repository | Answers |
 |---|---:|---|---|---|
 | `unit` | 289 | no | none — the aggregate is built directly | Are the business rules correct? |
-| `application` | 36 | no | in-memory | Does the use case orchestrate correctly? |
+| `application` | 38 | no | in-memory | Does the use case orchestrate correctly? |
 | `integration` | 43 | yes | Doctrine + real SQLite | Does the adapter honour the port? |
-| `acceptance` | 101 | yes | Doctrine + real SQLite | Does it work end to end, error contract included? |
-| **total** | **469** | | | 3 272 assertions |
+| `acceptance` | 108 | yes | Doctrine + real SQLite | Does it work end to end, error contract included? |
+| **total** | **478** | | | 3 335 assertions |
 
 Run one at a time — `make test-unit` is the fast loop, and it is fast because it touches nothing:
 
@@ -54,7 +54,7 @@ This is the answer to "how do you know your in-memory double isn't lying?".
 
 Three gates keep `docs/openapi.yaml` from drifting away from the API, and each exists because the one before it cannot see something.
 
-**Every response is checked against the document.** `ApiTestCase` validates what it gets — status declared, content type offered, body satisfying the schema — which is a hundred and seven responses and no new HTTP calls.
+**Every response is checked against the document.** `ApiTestCase` validates what it gets — status declared, content type offered, body satisfying the schema — which is a hundred and fourteen responses and no new HTTP calls.
 
 **Every catalogued failure must be documented.** `OpenApiErrorCoverageTest` walks the error catalog against the document in both directions, because the first gate can only check the failures the suite happens to provoke — and what a suite provokes is a choice rather than a given. `concurrent_modification` was the standing example of a failure it never provoked, until a test swapped the repository port for one that loses every race.
 

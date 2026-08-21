@@ -26,6 +26,7 @@ final class MachineStateResponse
      *     products: list<array{selector: string, name: string, price: string, count: int}>,
      *     changeReserve: array{coins: list<array{denomination: string, count: int}>, amount: string},
      *     insertedCoins: array{coins: list<array{denomination: string, count: int}>, amount: string},
+     *     acceptedCoins: list<array{denomination: string, dispensableAsChange: bool}>,
      *     exactChangeOnly: bool,
      * }
      */
@@ -41,10 +42,19 @@ final class MachineStateResponse
             ];
         }
 
+        $acceptedCoins = [];
+        foreach ($view->acceptedCoins as $coin) {
+            $acceptedCoins[] = [
+                'denomination' => $coin->amount()->toDecimalString(),
+                'dispensableAsChange' => $coin->isDispensableAsChange(),
+            ];
+        }
+
         return [
             'products' => $products,
             'changeReserve' => CoinsResponse::from($view->changeReserve),
             'insertedCoins' => CoinsResponse::from($view->insertedCoins),
+            'acceptedCoins' => $acceptedCoins,
             'exactChangeOnly' => $view->exactChangeOnly,
         ];
     }

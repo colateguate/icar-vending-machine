@@ -8,7 +8,7 @@ docker compose exec backend php bin/console app:machine:run "1, 0.25, 0.25, GET-
 # -> SODA
 ```
 
-> **Status.** The backend is complete: domain, use cases, HTTP API, CLI, persistence, container. The React panel is the remaining work — tickets 15–17 of the [backlog](.claude/tasks/vending-machine-challenge/), which also carries a handful of smaller items: the panel's own container, and the follow-ups the release review left behind.
+> **Status.** Both halves are built and both are containerised: domain, use cases, HTTP API, CLI and persistence on one side; the React panel, its own image and a reverse proxy on the other, with `make up` serving the pair. What is left in the [backlog](.claude/tasks/vending-machine-challenge/) is follow-up the reviews turned up rather than anything the brief asked for.
 
 ---
 
@@ -29,7 +29,8 @@ docker compose exec backend php bin/console app:machine:run "1, 0.25, 0.25, GET-
 
 **Without Docker:**
 
-- PHP >= 8.2 with `pdo_sqlite`, and Composer 2
+- PHP >= 8.2 with `pdo_sqlite`, and Composer 2 — for the API and the CLI
+- Node >= 22.22.2 and npm — only to run the panel outside its image; below that floor the `front-*` targets warn rather than stop
 - GNU Make is optional; every target is a one-line wrapper you can read in the [`Makefile`](Makefile)
 
 There is no database service to install. The machine lives in SQLite ([ADR-0008](docs/adr/0008-doctrine-sqlite-xml-mapping.md)).
@@ -40,7 +41,9 @@ There is no database service to install. The machine lives in SQLite ([ADR-0008]
 make up
 ```
 
-That builds the image, applies migrations, provisions a machine with the catalogue of the brief, and serves the API on **http://localhost:8000**. It is ready when the healthcheck goes green:
+That builds both images, applies migrations, provisions a machine with the catalogue of the brief, and serves the panel on **http://localhost:3000** and the API on **http://localhost:8000**.
+
+Two ports, and only the first is needed: the panel's nginx forwards `/api` to the backend, so the screen and the API answer on one origin. The API keeps its own port because the brief's examples are curl commands. It is ready when the healthcheck goes green:
 
 ```bash
 curl localhost:8000/api/health
@@ -125,10 +128,17 @@ It stays true because it is executed. Every response the acceptance suite produc
     {"denomination":"0.10","count":20},
     {"denomination":"0.25","count":20}],"amount":"8.00"},
   "insertedCoins":{"coins":[],"amount":"0.00"},
+  "acceptedCoins":[
+    {"denomination":"0.05","dispensableAsChange":true},
+    {"denomination":"0.10","dispensableAsChange":true},
+    {"denomination":"0.25","dispensableAsChange":true},
+    {"denomination":"1.00","dispensableAsChange":false}],
   "exactChangeOnly":false}}
 ```
 
 `exactChangeOnly` is the lamp on the front of the machine: the till holds nothing it is allowed to give back, so a client can warn before taking someone's money instead of discovering it in a refused sale.
+
+`acceptedCoins` answers a different question from `changeReserve` — what the slot takes, not what the till holds, so a machine serviced down to nothing still accepts all four. It exists so a client does not carry the list itself, and `dispensableAsChange` for the same reason: that the 1.00 coin goes in and never comes back is an interpretation of the brief, and a rule reimplemented on the far side of a network is a rule two systems will eventually disagree about.
 </details>
 
 <details open>
@@ -220,18 +230,22 @@ No attributes in the core either: routes live in YAML, handlers are registered b
 ## Tests
 
 ```bash
-make test           # 469 tests, 3 272 assertions
+make test           # 478 tests, 3 335 assertions
 make test-unit      # 289 of them, no kernel and no database
-make qa             # style + PHPStan max + Deptrac + schema drift + tests
+make qa             # both halves; every CI gate that needs no network
 make test-mutation  # Infection over Domain + Application — MSI 100%
+
+make front-test     # the panel's own 115, in jsdom
+make front-lint     # ESLint, accessibility rules included
+make front-e2e      # five in a real browser, against a running `make up`
 ```
 
 | Suite | Tests | Answers |
 |---|---:|---|
 | unit | 289 | Are the business rules correct? |
-| application | 36 | Does the use case orchestrate correctly? |
+| application | 38 | Does the use case orchestrate correctly? |
 | integration | 43 | Does the adapter honour the port? |
-| acceptance | 101 | Does it work end to end, error contract included? |
+| acceptance | 108 | Does it work end to end, error contract included? |
 
 The three examples of the brief exist as executable specification at four levels. The repository port has **one abstract contract test that both adapters must pass**, written with the first adapter long before the second existed — which is the answer to "how do you know your in-memory double is not lying?".
 
@@ -264,16 +278,16 @@ It is on sale immediately, and change works for it like any other:
 
 ### A new coin: the tooling asks you the question
 
-Coins are the opposite: a closed set, a physical property of the hardware, so `CoinDenomination` is an enum. Adding `case TWENTY_CENTS = 20;` and running the checks gives this, and only this:
+Coins are the opposite: a closed set, a physical property of the hardware, so `CoinDenomination` is an enum. Add `case TWENTY_CENTS = 20;`, run the checks, and the first thing they point at is a single line:
 
 ```
 PHPStan  Match expression does not handle remaining value:
          CoinDenomination::TWENTY_CENTS          CoinDenomination.php:43
-
-PHPUnit  4 failures, all of them the tests that pin the current coin set
 ```
 
-That is the design working. The `match` in `isDispensableAsChange()` is exhaustive on purpose, so a new denomination cannot inherit a silent default — **the analyser makes you answer whether the machine may give this coin back**, which is the one question a new coin actually raises. The four failing tests are where the current set is written down.
+That is the design working. The `match` in `isDispensableAsChange()` is exhaustive on purpose, so a new denomination cannot inherit a silent default — **the analyser makes you answer whether the machine may give this coin back**, which is the one question a new coin actually raises. Leave it unanswered and there is no answer at runtime either: reading the machine reaches a `match` with no arm for the new coin, and the API answers 500.
+
+PHPUnit points at the other place the coin set is declared. The accepted set is *published* in [`docs/openapi.yaml`](docs/openapi.yaml) and every acceptance response is validated against it, so the coin has to be declared there too — the contract enforcing itself rather than springing a surprise later. Answer the match, widen the contract, and **twelve** tests still fail: four unit, five application, three acceptance, each of them a test whose job is to write the current coin set down.
 
 Nothing else breaks. The change algorithm is generic over denominations, and neither the aggregate nor any adapter mentions a specific coin.
 
@@ -301,7 +315,7 @@ And what was deliberately *not* built, which is the more interesting half:
 
 ## Decision records
 
-Fifteen ADRs, each written in the same commit as the decision it records, each with real alternatives and at least one honest downside.
+Seventeen ADRs, each written in the same commit as the decision it records, each with real alternatives and at least one honest downside.
 
 **[Index →](docs/adr/)** · The four worth reading first: [one aggregate](docs/adr/0005-single-aggregate-root.md) · [refusing a sale without change](docs/adr/0007-reject-purchase-when-change-unavailable.md) · [the aggregate as one row](docs/adr/0008-doctrine-sqlite-xml-mapping.md) · [the error contract](docs/adr/0012-rfc7807-errors-with-explicit-status-rule.md)
 
@@ -325,9 +339,11 @@ docs/
   openapi.yaml         the API contract, validated against real responses by the suite
   architecture.md      the hexagon, and a purchase traced through it
   testing-strategy.md  what each of the four suites is for
-  adr/                 fifteen decision records
-frontend/              React panel (tickets 15–17)
+  adr/                 seventeen decision records
+frontend/
+  src/                 the panel: pages · hooks · components · services
+  docker/nginx.conf    serves the build, and forwards /api to the backend
 .claude/               the tickets, skills and review agents used to build this
 ```
 
-`.claude/` is committed on purpose. The brief welcomes AI assistance and says it wants to see *how* software is built; the tickets, the four review agents and their PASS/KO verdicts are part of that answer.
+`.claude/` is committed on purpose. The brief welcomes AI assistance and says it wants to see *how* software is built; the tickets, the six review agents and their PASS/KO verdicts are part of that answer.

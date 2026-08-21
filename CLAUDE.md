@@ -77,15 +77,62 @@ Layer vocabulary for the interview: `Delivery/` = primary/driving adapters (the 
 
 Non-negotiables: the three challenge examples exist as executable specification (HTTP acceptance + CLI); the repository **contract test** is abstract (`tests/Support/Contract/`) and every adapter extends it — written as a contract from the *first* adapter, so it states what any implementation must guarantee rather than what one happens to do. Expectations that legitimately differ between adapters (Doctrine's identity map returns the same instance twice; the in-memory double copies on read) stay in the adapter's own test, never in the contract. Never mock value objects; test business rules at unit level, not through the kernel. Infection (mutation testing) gates `Domain/` + `Application/` only.
 
-## Commands (once scaffolding lands — tickets 2–3)
+## Frontend architecture — the layer rule
+
+The panel is a thin client over the API: it renders state and dispatches actions, and it decides nothing about vending.
+
+```
+frontend/src/
+├── main.jsx           # bootstrap, nothing else
+├── App.jsx            # layout and composition; owns no remote state
+├── pages/             # one file per screen. There is one: MachinePage
+├── hooks/             # useMachine — the only module that talks to services/
+├── components/        # presentational: props in, callbacks out, no network
+└── services/          # httpClient (the only fetch), machineApi, problemDetails
+```
+
+| Layer | May depend on |
+|---|---|
+| `components/` | React, other `components/` |
+| `hooks/` | `services/`, React |
+| `pages/` | `hooks/`, `components/`, React |
+| `App.jsx` / `main.jsx` | `pages/`, React |
+| `services/` | `fetch` — nothing of the UI |
+
+There is **no Deptrac for the frontend**. The rule is upheld by review (`frontend-architecture-reviewer`) rather than by CI — a deliberate trade recorded in `docs/adr/0016`. That makes it easier to break here than in the backend, which is exactly why it is written down in one place and pointed at rather than assumed.
+
+**Layer-based, not feature-sliced, on purpose.** Organising by feature earns its keep when features have to be removable independently. There is one screen. Feature-slicing a single feature is ceremony, and knowing where to stop is part of what the challenge evaluates.
+
+**No data-fetching library.** Every writing endpoint returns the full machine state in its response, so there is no cache to invalidate and no refetch to orchestrate: the answer to a mutation *is* the new state. TanStack Query and SWR were considered and rejected on that ground. The cost is real and stated in `docs/adr/0016` — no in-flight deduplication, so controls are disabled while an action is pending.
+
+**Money never becomes a number.** Amounts arrive as decimal strings (`"0.65"`) and stay strings all the way to the DOM. `Number()`, `parseFloat` or arithmetic on an amount is the same Critical here as in the backend: JavaScript offers only the float that ADR-0004 refuses.
+
+**Errors are read by `code`, never by `detail`.** The `ErrorCatalog` codes (`insufficient_funds`, `exact_change_required`, …) are the stable interface; `detail` is English prose that may be reworded without warning.
+
+**Frontend test levels**: component tests (Vitest + Testing Library, mocking the `services/` module) and module tests (`services/`, mocking `fetch`). The seam is the module, never `global.fetch` inside a component test. Queries go by role and accessible name — `data-testid` is a last resort the test has to justify, and accessible markup is testable markup. `frontend/e2e/` holds the fifth level: five Playwright specs against the running stack, for what jsdom structurally cannot see — a decorative overlay swallowing clicks, an accessible name mangled by CSS, and the three things the panel's nginx decides. The bar for adding to it is in `frontend/e2e/README.md`: only what **needs** a browser or the real image, because a case Vitest can answer is a slow test for no reason. It sits outside `make qa` (it needs `make up` first) and runs as its own CI job (ADR-0017). No mutation gate and no coverage threshold on this half: the evaluated suite is the backend's.
+
+## Commands
 
 ```bash
 make test           # all four PHPUnit suites
 make test-unit      # fast domain suite
-make qa             # PHPUnit + PHPStan (max) + Deptrac + php-cs-fixer
+make qa             # both halves; every CI gate that needs no network
 make test-mutation  # Infection on Domain + Application
-make up             # docker compose up (backend + frontend)
+make up             # the whole stack: panel on :3000, API on :8000
+
+make front-install  # npm ci
+make front-dev      # the panel against the API on :8000
+make front-test     # Vitest
+make front-lint     # ESLint, accessibility rules included
+make front-build    # production bundle
+make front-e2e      # browser smoke against the running stack (needs `make up`)
 ```
+
+The whole repo is driven from `make`, both halves. The `front-*` targets warn
+rather than stop when the running Node is below the floor `frontend/package.json`
+declares: without Node nothing can run, but the suite does pass today on a
+version jsdom says it does not support, and refusing to run a suite that works
+would be a decision with its own ticket rather than a guard.
 
 Direct equivalents from `backend/`: `vendor/bin/phpunit --testsuite unit|application|integration|acceptance`, `vendor/bin/phpstan analyse`, `vendor/bin/deptrac analyse` (config auto-detected from `deptrac.php`), `vendor/bin/php-cs-fixer fix`. Note: PHPUnit config is `phpunit.dist.xml` (PHPUnit 11 recipe convention).
 
@@ -117,7 +164,7 @@ Rules, in order:
 
 - **Tickets** live in `.claude/tasks/<priority>-<slug>.md` (epic mode: `.claude/tasks/<epic>/NN-<priority>-<slug>.md`); completed tickets are **moved** to `.claude/completed_tasks/`. Created only via the `create-ticket` skill.
 - **Features** → `implement-feature` skill (TDD, red first, active verification before claiming done). **Bugs/refactors/trivial** → `fix-bug` skill. **Before any push** → `review-before-push` skill (dispatches the 4 reviewer agents in parallel, aggregates a PASS/KO verdict).
-- Reviewer agents: `security-reviewer`, `architecture-reviewer`, `clean-code-reviewer`, `test-quality-reviewer`. Each emits its own `### Veredicto: PASS/KO`. Use these before generic plugin reviewers (`agent-skills:code-reviewer`, etc.).
+- Reviewer agents: six, dispatched four at a time. Security and clean-code review both halves of the repo; the architecture and test lenses come in matched pairs, because one rubric cannot cover Deptrac and Testing Library at once. Backend diff → `security-reviewer`, `architecture-reviewer`, `clean-code-reviewer`, `test-quality-reviewer`. Frontend diff → `security-reviewer`, `frontend-architecture-reviewer`, `clean-code-reviewer`, `frontend-test-quality-reviewer`. A diff touching both gets the union. Each emits its own `### Veredicto: PASS/KO`. Use these before generic plugin reviewers (`agent-skills:code-reviewer`, etc.).
 - **Skill precedence**: project skills > `superpowers:*` (harness mechanics) > `agent-skills:*` (opt-in domain craft). `agent-skills` plans go in `tasks/plan.md` by its convention — **ignore that**; tickets live in `.claude/tasks/`.
 - Language: code, tests, commits, README, ADRs in **English**; skills, agents, tickets in **Spanish**.
 - **Study docs**: `documentation/` (gitignored, Spanish) holds the user's personal study notes — `symfony-basico.md` and `glosario.md`. When a ticket introduces a new framework feature or architecture concept (Messenger, Doctrine mapping, Infection...), **update the relevant section there in the same session**, written for someone coming from Laravel. New acronym used anywhere → new glossary entry.

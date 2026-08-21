@@ -21,6 +21,8 @@ Every one of them names the alternatives that were actually considered and at le
 | [0013](0013-enforce-boundaries-with-deptrac-phpstan-max.md) | Deptrac + PHPStan at max, no baseline | Why the architecture is checked and not merely agreed |
 | [0014](0014-four-test-levels-mutation-gated-domain.md) | Four test levels, mutation testing over the core | What each suite is for, and why MSI instead of line coverage |
 | [0015](0015-openapi-as-a-tested-contract.md) | A hand-written OpenAPI document, tested against real responses | Why not generate the spec from the code — and why not a Postman collection |
+| [0016](0016-frontend-layers-and-no-data-library.md) | The panel's layers, and no data-fetching library | Why there is no cache in front of an API that returns the new state on every write |
+| [0017](0017-browser-smoke-for-what-jsdom-cannot-see.md) | A fifth test level: browser smoke | Why jsdom cannot answer these five questions, and why Playwright's accessible name is not the browser's |
 
 ## The four worth reading first
 

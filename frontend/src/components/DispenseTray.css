@@ -1,0 +1,50 @@
+/*
+ * What is lying in the cavity. Everything here has physically left the machine,
+ * so it is drawn as objects sitting in a dark box rather than as a list of
+ * facts: the can on top, then the coins beside it as separate pieces.
+ */
+
+.tray {
+  min-height: 3.5rem;
+}
+
+.tray__empty {
+  color: var(--ink-dim);
+  font-size: 0.875rem;
+  font-style: italic;
+  margin: 0;
+}
+
+.tray__item {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.tray__change {
+  color: var(--led);
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+  margin: var(--space-2) 0 0;
+}
+
+.tray__coins {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+}
+
+.tray__coins li {
+  background: linear-gradient(180deg, var(--steel-700) 0%, var(--steel-800) 100%);
+  border: 1px solid var(--steel-500);
+  border-radius: var(--radius-pill);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  padding: var(--space-1) var(--space-3);
+}

@@ -129,6 +129,11 @@ paths:
                       insertedCoins:
                         coins: []
                         amount: "0.00"
+                      acceptedCoins:
+                        - { denomination: "0.05", dispensableAsChange: true }
+                        - { denomination: "0.10", dispensableAsChange: true }
+                        - { denomination: "0.25", dispensableAsChange: true }
+                        - { denomination: "1.00", dispensableAsChange: false }
                       exactChangeOnly: false
         '503':
           $ref: '#/components/responses/NotProvisioned'
@@ -181,6 +186,11 @@ paths:
                         coins:
                           - { denomination: "1.00", count: 1 }
                         amount: "1.00"
+                      acceptedCoins:
+                        - { denomination: "0.05", dispensableAsChange: true }
+                        - { denomination: "0.10", dispensableAsChange: true }
+                        - { denomination: "0.25", dispensableAsChange: true }
+                        - { denomination: "1.00", dispensableAsChange: false }
                       exactChangeOnly: false
         '400':
           $ref: '#/components/responses/MalformedJson'
@@ -272,6 +282,11 @@ paths:
                       insertedCoins:
                         coins: []
                         amount: "0.00"
+                      acceptedCoins:
+                        - { denomination: "0.05", dispensableAsChange: true }
+                        - { denomination: "0.10", dispensableAsChange: true }
+                        - { denomination: "0.25", dispensableAsChange: true }
+                        - { denomination: "1.00", dispensableAsChange: false }
                       exactChangeOnly: false
         '409':
           description: A concurrent change was refused by optimistic locking.
@@ -346,6 +361,11 @@ paths:
                       insertedCoins:
                         coins: []
                         amount: "0.00"
+                      acceptedCoins:
+                        - { denomination: "0.05", dispensableAsChange: true }
+                        - { denomination: "0.10", dispensableAsChange: true }
+                        - { denomination: "0.25", dispensableAsChange: true }
+                        - { denomination: "1.00", dispensableAsChange: false }
                       exactChangeOnly: false
         '400':
           $ref: '#/components/responses/MalformedJson'
@@ -509,6 +529,11 @@ paths:
                       insertedCoins:
                         coins: []
                         amount: "0.00"
+                      acceptedCoins:
+                        - { denomination: "0.05", dispensableAsChange: true }
+                        - { denomination: "0.10", dispensableAsChange: true }
+                        - { denomination: "0.25", dispensableAsChange: true }
+                        - { denomination: "1.00", dispensableAsChange: false }
                       exactChangeOnly: false
         '400':
           $ref: '#/components/responses/MalformedJson'
@@ -603,6 +628,24 @@ components:
           type: integer
           minimum: 1
 
+    AcceptedCoin:
+      type: object
+      additionalProperties: false
+      required: [denomination, dispensableAsChange]
+      properties:
+        denomination:
+          $ref: '#/components/schemas/Denomination'
+        dispensableAsChange:
+          type: boolean
+          description: |
+            Whether this coin can come back out of the change chute. False for
+            the 1.00 coin and true for the other three, which is the brief's
+            four-in, three-out rule stated rather than left to be inferred.
+
+            Loading a coin that is not dispensable into the reserve therefore
+            does nothing for change-making, and a service screen worth its salt
+            says so before someone does it.
+
     CoinBag:
       type: object
       additionalProperties: false
@@ -639,7 +682,7 @@ components:
     MachineState:
       type: object
       additionalProperties: false
-      required: [products, changeReserve, insertedCoins, exactChangeOnly]
+      required: [products, changeReserve, insertedCoins, acceptedCoins, exactChangeOnly]
       properties:
         products:
           type: array
@@ -650,6 +693,20 @@ components:
           $ref: '#/components/schemas/CoinBag'
         insertedCoins:
           $ref: '#/components/schemas/CoinBag'
+        acceptedCoins:
+          type: array
+          description: |
+            Which coins the slot takes, smallest first — a different question
+            from `changeReserve`, which is what the machine currently holds. A
+            machine serviced down to an empty till still accepts all four.
+
+            It is published so a client does not have to carry the list itself.
+            The same goes for `dispensableAsChange`: that the 1.00 coin goes in
+            and never comes back is an interpretation of the brief, and a rule
+            reimplemented on the far side of a network is a rule two systems
+            will eventually disagree about.
+          items:
+            $ref: '#/components/schemas/AcceptedCoin'
         exactChangeOnly:
           type: boolean
           description: |
