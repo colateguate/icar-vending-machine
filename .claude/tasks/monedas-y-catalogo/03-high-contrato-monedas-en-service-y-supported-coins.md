@@ -57,6 +57,7 @@ alta — desbloquea los dos tickets de panel.
 
 - Spec: [../../../docs/specs/2026-08-21-configurable-coins-and-catalogue-design.md](../../../docs/specs/2026-08-21-configurable-coins-and-catalogue-design.md) (K6 y riesgo `additionalProperties`).
 - Regla de status del repo: 422 = input inválido en sí; el "insertar deshabilitada" es 422 (mandaste una moneda que esta máquina tiene apagada), no 409 — si el implementador discrepa, que lo argumente contra `ErrorCatalog.php:29-40` y lo traiga a revisión.
+- Hallazgo de la review de seguridad del backlog: este endpoint sin auth + monedas conmutables = **DoS con un curl** (deshabilitarlas todas). Aceptado dentro del trade-off documentado (lo registra el ADR-0018, ticket 01). Existe una guardia barata opcional — rechazar con 422 un payload que deje cero denominaciones habilitadas — que NO está decidida: si el usuario la quiere, se añade aquí como criterio; no la implementes por iniciativa propia.
 
 ## Origen
 

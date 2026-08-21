@@ -6,14 +6,14 @@ Las máquinas reales aceptan también 0.50 y 2.00, y el operador puede habilitar
 
 ## Criterios de aceptación
 
-- [ ] `CoinDenomination` tiene `FIFTY_CENTS = 50` y `TWO_UNITS = 200`; `isDispensableAsChange()` (`CoinDenomination.php:40-45`) responde `true` para 0.50 y `false` para 2.00 (el match sigue siendo exhaustivo).
+- [ ] `CoinDenomination` tiene `FIFTY_CENTS = 50` y `TWO_UNITS = 200`; `isDispensableAsChange()` (`CoinDenomination.php:40-46`) responde `true` para 0.50 y `false` para 2.00 (el match sigue siendo exhaustivo).
 - [ ] `VendingMachine` lleva el set habilitado como campo (junto a `changeReserve`, `VendingMachine.php:64`); `provision()` y `service()` (`:192`) lo reciben; `insert()` lanza un error de dominio nuevo y nombrado cuando la moneda está deshabilitada (distinto de `UnsupportedCoin`: "el hardware no la lee" ≠ "está apagada").
 - [ ] El pool de cambio excluye las deshabilitadas: una moneda deshabilitada que quedara dentro jamás sale como cambio (semántica K3), y `requiresExactChange()` (`:176`) se calcula sobre dispensables∩habilitadas.
 - [ ] `service()` con reserva que carga una denominación deshabilitada (count>0) lanza error de dominio nombrado — el borde lo convertirá en 422 (ticket 03).
 - [ ] Los tests unitarios del contraejemplo greedy (0.30 con {0.25, 0.10×3}) siguen pasando; el set {5,10,25,50,100} lo mantiene válido.
 - [ ] Los mutantes suprimidos de `backend/infection.json5:64-71` revisados: su comentario dice que la supresión EXPIRA si entra una denominación no canónica — decidir si {5,10,25,50} sigue siendo canónico y documentarlo en el propio json5.
 - [ ] `make test-mutation` con MSI 100 % sobre el nuevo código.
-- [ ] ADR nuevo escrito en este mismo commit.
+- [ ] ADR nuevo escrito en este mismo commit — incluida la consecuencia negativa que la review de seguridad del backlog señaló: **sin auth en `/service`, poder deshabilitar monedas convierte el endpoint en un vector de DoS total** (todas apagadas = la máquina no cobra). El trade-off de no-auth se mantiene, pero el ADR lo registra ampliado, no lo omite.
 
 ## Capa
 

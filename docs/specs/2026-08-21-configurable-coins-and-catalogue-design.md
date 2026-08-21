@@ -24,7 +24,7 @@ Real vending machines take 0.50 and 2.00 coins (and never 0.01/0.02), and operat
 - **Data-driven denominations** (adding coins without a deployment) — it would dismantle the typed-extensibility argument the README demonstrates (§"A new coin"); revisit only if coin sets ever vary per market.
 - **Gradual retirement** (refuse at the slot but keep dispensing what remains) — two behaviours under one flag; if ever wanted, it is a third state, not a reinterpretation of this one.
 - **Banknotes, 0.01, 0.02** — vending machines do not take them; excluded by the requester.
-- **Technician authentication** — unchanged from the delivered trade-off table; this epic neither needs it nor worsens its absence.
+- **Technician authentication** — still not built (the brief defines no actors), but this epic **does widen what its absence exposes**, and saying otherwise would be false: before, an unauthenticated `PUT /service` could manipulate stock and change; after ticket 03 it can also disable every denomination, which stops the machine taking money at all — a one-request denial of service. The decision stands and the ADR of ticket 01 must record the widened impact explicitly; see Risks.
 
 ## Interview decisions
 
@@ -69,6 +69,7 @@ Branching: `release/configurable-machine` cut from `main`; one `feat/*` branch p
 - **Greedy-vs-optimal narrative under a new coin set** → {5, 10, 25, 50, 100} keeps the 0.30/{0.25,0.10×3} counterexample intact; ticket 01 re-checks the suppressed mutants (`infection.json5:64-71`).
 - **`additionalProperties: false` on the service request** means the frontend must send exactly the negotiated shape — the current form deliberately strips extra fields (`ServiceDrawer.jsx:102-104`); ticket 03 owns the shape, tickets 04/05 follow it.
 - **Semantic drift of `acceptedCoins`** → prevented by K6: its meaning is frozen; anything new gets a new name.
+- **Unauthenticated coin management is a total-DoS vector** (security review of this backlog): disabling all six denominations makes every insert a 422. Accepted within the existing no-auth trade-off, but documented rather than omitted — ADR-0018 records it, and a cheap defence-in-depth guard exists if wanted (refuse a service payload that leaves zero denominations enabled): named here as an option, deliberately not decided in this spec.
 
 ## Success criteria
 
