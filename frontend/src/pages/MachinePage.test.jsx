@@ -153,6 +153,23 @@ describe('MachinePage', () => {
     expect(await screen.findByText('No change for 0.35 — use exact change')).toBeVisible();
   });
 
+  /**
+   * The refusal no amount of care on this screen can prevent: someone wrote to
+   * the machine between the state this panel is showing and this click. It is
+   * optimistic locking answering 409 instead of overwriting silently, seen from
+   * the side of whoever is standing at the machine — and it needs a real write
+   * action, which is why it is here and not in the component's own suite.
+   */
+  it('says the machine is busy when someone else got there first', async () => {
+    await openPanel();
+    purchase.mockRejectedValue(problem(409, 'concurrent_modification'));
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('button', { name: /WATER/ }));
+
+    expect(await screen.findByText('Busy, try again')).toBeVisible();
+  });
+
   it('lights the lamp when the machine says it can no longer give change', async () => {
     getState.mockResolvedValue({ machine: { ...machine, exactChangeOnly: true } });
     render(<MachinePage />);
