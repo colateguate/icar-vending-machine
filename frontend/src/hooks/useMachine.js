@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { getState, insertCoin, purchase, returnCoins } from '../services/machineApi';
+import { getState, insertCoin, purchase, returnCoins, service } from '../services/machineApi';
 
 /**
  * The only module above `services/` that talks to the API, and therefore the
@@ -110,6 +110,15 @@ export function useMachine() {
     }
   }, [run]);
 
+  // Nothing physically leaves the machine on a service visit, so unlike the
+  // other two writing actions this one has no tray to fill.
+  const visit = useCallback(
+    async (products, changeReserve) => {
+      await run(() => service(products, changeReserve));
+    },
+    [run],
+  );
+
   return {
     machine,
     error,
@@ -119,5 +128,6 @@ export function useMachine() {
     insertCoin: insert,
     purchase: buy,
     returnCoins: refund,
+    service: visit,
   };
 }

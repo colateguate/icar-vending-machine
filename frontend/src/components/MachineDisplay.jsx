@@ -15,17 +15,18 @@
 const GENERIC_FAULT = 'Out of order';
 
 /**
- * A message that needs a figure the document is supposed to carry. If the figure
- * is missing then the contract has been broken somewhere upstream, and the
- * honest thing to show is the same fault as an unrecognised code — never a
- * sentence with "undefined" in it, and never a blank screen where the panel
- * used to be.
+ * A message that needs something the document is supposed to carry. If it is
+ * missing, fall back rather than print "undefined" or take the panel down with
+ * a TypeError. The fallback is per message because "we could not read what you
+ * sent" degrades to a different sentence than "the machine is broken".
  */
-const showing = (extension, write) => (error) => {
-  const amount = error.extensions?.[extension];
+const showing =
+  (extension, write, fallback = GENERIC_FAULT) =>
+  (error) => {
+    const value = error.extensions?.[extension];
 
-  return amount ? write(amount) : GENERIC_FAULT;
-};
+    return value ? write(value) : fallback;
+  };
 
 const MESSAGES = {
   unsupported_coin: () => 'Coin rejected',
@@ -39,7 +40,15 @@ const MESSAGES = {
     (amount) => `No change for ${amount} — use exact change`,
   ),
   concurrent_modification: () => 'Busy, try again',
-  invalid_request_payload: () => 'Request not understood',
+  // `field` exists so a client can point at the box that is wrong instead of
+  // relaying an English sentence about it. The service form is where this one
+  // comes from, and where naming the field is the difference between a usable
+  // message and a shrug.
+  invalid_request_payload: showing(
+    'field',
+    (field) => `Invalid: ${field}`,
+    'Request not understood',
+  ),
   malformed_json: () => 'Request not understood',
   machine_not_provisioned: () => 'Out of service',
 };

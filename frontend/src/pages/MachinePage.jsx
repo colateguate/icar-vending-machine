@@ -4,6 +4,7 @@ import ExactChangeLamp from '../components/ExactChangeLamp';
 import MachineDisplay from '../components/MachineDisplay';
 import ProductGrid from '../components/ProductGrid';
 import ReturnCoinButton from '../components/ReturnCoinButton';
+import ServiceDrawer from '../components/ServiceDrawer';
 import { useMachine } from '../hooks/useMachine';
 
 /**
@@ -11,12 +12,13 @@ import { useMachine } from '../hooks/useMachine';
  * parts and hands each one the props it uses. It decides nothing about vending.
  *
  * The markup is the anatomy of a real cabinet — body, window, control column,
- * tray — because ticket 17c dresses it and should be able to do so with a
- * stylesheet and nothing else. Structure now is what buys a skin later that
- * cannot break behaviour.
+ * tray, and the service door down the side — because ticket 17c dresses it and
+ * should be able to do so with a stylesheet and nothing else. Structure now is
+ * what buys a skin later that cannot break behaviour.
  */
 export default function MachinePage() {
-  const { machine, error, tray, loading, busy, insertCoin, purchase, returnCoins } = useMachine();
+  const { machine, error, tray, loading, busy, insertCoin, purchase, returnCoins, service } =
+    useMachine();
 
   // Nothing is operable until there is a machine to operate, and nothing is
   // operable while it is answering: without in-flight deduplication below this
@@ -51,6 +53,14 @@ export default function MachinePage() {
       <div className="machine__tray">
         <DispenseTray contents={tray} />
       </div>
+
+      <ServiceDrawer
+        acceptedCoins={machine?.acceptedCoins ?? []}
+        changeReserve={machine?.changeReserve ?? { coins: [], amount: '0.00' }}
+        disabled={locked}
+        onService={service}
+        products={machine?.products ?? []}
+      />
     </main>
   );
 }

@@ -59,6 +59,32 @@ describe('MachineDisplay', () => {
     expect(screen.getByText('Out of order')).toBeVisible();
   });
 
+  /**
+   * The service form's own failure. `field` says which box is wrong, so the
+   * screen can point at it instead of relaying an English sentence about it.
+   */
+  it('names the field the machine would not accept', () => {
+    render(
+      <MachineDisplay
+        amount="0.00"
+        error={refusal('invalid_request_payload', { field: 'products[0].count' })}
+      />,
+    );
+
+    expect(screen.getByText('Invalid: products[0].count')).toBeVisible();
+  });
+
+  /**
+   * Without the extension there is nothing to point at, and the honest fallback
+   * is still about the request rather than the generic "out of order" an
+   * unknown code gets — the machine understood us fine, it just said no.
+   */
+  it('still blames the request when the document does not say which field', () => {
+    render(<MachineDisplay amount="0.00" error={refusal('invalid_request_payload')} />);
+
+    expect(screen.getByText('Request not understood')).toBeVisible();
+  });
+
   it('falls back to a generic fault for a code it has never heard of', () => {
     render(<MachineDisplay amount="0.00" error={refusal('a_code_from_the_future')} />);
 
