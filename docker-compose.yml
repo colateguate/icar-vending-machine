@@ -1,4 +1,4 @@
-# The whole stack, which today is one service.
+# The whole stack: the API, and the panel with a proxy in front of both.
 #
 # No database service, and that is the point of choosing SQLite (ADR-0008):
 # there is nothing to wait for, nothing to authenticate against and nothing to
@@ -6,7 +6,11 @@
 # down` and disappears with `docker compose down -v` — which is also how you
 # reset the machine to the catalogue of the brief.
 #
-# The frontend service arrives with ticket 13b, once there is a panel to serve.
+# Two ports are published and only one of them is needed. The panel serves the
+# screen and forwards /api to the API behind it, so http://localhost:3000 is
+# the whole application. The API keeps its own port because the brief's own
+# examples are curl commands, and because the CLI runner and the acceptance
+# tests talk to it directly.
 
 services:
   backend:
@@ -28,11 +32,32 @@ services:
       # Inside the volume, so the machine outlives the container.
       DATABASE_URL: "${DATABASE_URL:-sqlite:////app/var/data/machine.db}"
 
-      # Who may call the API from a browser. Localhost by default, for the
-      # panel running with `npm run dev` during development.
+      # Who may call the API from a browser directly. Not the panel: it is
+      # served from the same origin as the API in both the container stack
+      # (nginx, below) and development (the Vite dev server proxies /api), so
+      # no request it makes is ever cross-origin. This is the door for anything
+      # else — a second client, a browser console poking at the API from some
+      # other page — and it stays narrow for that reason.
       CORS_ALLOW_ORIGIN: "${CORS_ALLOW_ORIGIN:-^https?://(localhost|127\\.0\\.0\\.1)(:[0-9]+)?$$}"
     volumes:
       - machine-data:/app/var/data
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      target: runtime
+    ports:
+      - "${FRONTEND_PORT:-3000}:8080"
+    # Not because the panel needs the API to boot — nginx serves static files
+    # regardless — but because nginx resolves `backend` when it starts and
+    # exits if the name is not there yet. Waiting for healthy rather than for
+    # started also means the first thing anyone loads is a screen that can
+    # already answer, instead of one that shows "machine unreachable" for a
+    # few seconds and teaches them to distrust it.
+    depends_on:
+      backend:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:

@@ -59,3 +59,11 @@ The brief prints `-> WATER, 0.25, 0.10`, so the command line does too. The HTTP 
 ## The command line drives the provisioned machine, not a throwaway one
 
 Running an example really sells a can. The alternative — a fresh machine per invocation — would make the examples reproducible without any setup, and would also make the CLI a simulator that happens to share code, rather than a second door into the same room. `app:machine:provision` is how the machine gets refilled.
+
+## The panel and the API share one origin, so CORS is never the answer
+
+The container stack puts nginx in front of both: it serves the built bundle and forwards `/api` to the backend, so the browser only ever sees `http://localhost:3000`. Development already worked this way — the Vite dev server proxies `/api` too — which means no request the panel makes is cross-origin in either environment, and none of them triggers a preflight.
+
+The alternative was to give the panel its own origin and widen `CORS_ALLOW_ORIGIN` to admit it — the commoner arrangement, and one that leaves every deployment a second thing to configure correctly. `frontend/docker/nginx.conf` carries the full argument, next to the configuration that implements it. `CORS_ALLOW_ORIGIN` stays, narrow, for callers that genuinely are somewhere else; the panel is not one of them.
+
+The cost is that the panel cannot be served from a CDN without either restoring CORS or putting the same proxy in front of it. For a single evaluation stack, nobody pays that.
