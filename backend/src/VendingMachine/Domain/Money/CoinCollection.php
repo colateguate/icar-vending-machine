@@ -116,6 +116,27 @@ final readonly class CoinCollection
         return self::canonical($counts);
     }
 
+    /**
+     * The subset of a given machine's coins, dropping the denominations it no
+     * longer takes.
+     *
+     * The other narrowing, and the one that varies per machine: switching a
+     * denomination off does not empty the till of it, so those coins stay the
+     * machine's money and stop being money it can pay out. The caller keeps the
+     * whole collection and narrows only what it hands to a change policy —
+     * narrowing what it stores would lose the stranded coins.
+     */
+    public function restrictedTo(AcceptedCoins $accepted): self
+    {
+        $counts = array_filter(
+            $this->countsByDenomination,
+            static fn (int $value): bool => $accepted->accepts(CoinDenomination::fromCents($value)),
+            \ARRAY_FILTER_USE_KEY,
+        );
+
+        return self::canonical($counts);
+    }
+
     public function equals(self $other): bool
     {
         return $this->countsByDenomination === $other->countsByDenomination;

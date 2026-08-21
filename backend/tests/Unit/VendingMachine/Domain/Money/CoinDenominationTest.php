@@ -12,18 +12,24 @@ use PHPUnit\Framework\TestCase;
 
 final class CoinDenominationTest extends TestCase
 {
-    public function test_the_machine_accepts_exactly_four_denominations(): void
+    /**
+     * What the coin acceptor can read, which is not the same question as what
+     * a given machine currently takes — that one is AcceptedCoins, and it can
+     * be narrower. The two smallest coins of the currency are absent on
+     * purpose: a vending machine takes neither.
+     */
+    public function test_the_hardware_reads_exactly_six_denominations(): void
     {
-        $acceptedCents = array_map(
+        $supportedCents = array_map(
             static fn (CoinDenomination $denomination): int => $denomination->value,
             CoinDenomination::cases(),
         );
 
-        self::assertSame([5, 10, 25, 100], $acceptedCents);
+        self::assertSame([5, 10, 25, 50, 100, 200], $supportedCents);
     }
 
-    #[DataProvider('acceptedCents')]
-    public function test_it_is_created_from_an_accepted_cent_value(int $cents): void
+    #[DataProvider('supportedCents')]
+    public function test_it_is_created_from_a_supported_cent_value(int $cents): void
     {
         self::assertSame($cents, CoinDenomination::fromCents($cents)->value);
     }
@@ -31,12 +37,14 @@ final class CoinDenominationTest extends TestCase
     /**
      * @return iterable<string, array{int}>
      */
-    public static function acceptedCents(): iterable
+    public static function supportedCents(): iterable
     {
         yield '0.05' => [5];
         yield '0.10' => [10];
         yield '0.25' => [25];
+        yield '0.50' => [50];
         yield '1.00' => [100];
+        yield '2.00' => [200];
     }
 
     #[DataProvider('rejectedCents')]
@@ -55,8 +63,7 @@ final class CoinDenominationTest extends TestCase
         yield 'one cent' => [1];
         yield 'two cents' => [2];
         yield 'twenty cents' => [20];
-        yield 'fifty cents' => [50];
-        yield 'two units' => [200];
+        yield 'five units' => [500];
         yield 'zero' => [0];
         yield 'negative' => [-25];
     }
@@ -85,6 +92,16 @@ final class CoinDenominationTest extends TestCase
         self::assertFalse(CoinDenomination::ONE_UNIT->isDispensableAsChange());
     }
 
+    /**
+     * The same rule read one denomination further up: the big coins go in and
+     * do not come back. The brief only names the 1.00, and 2.00 is the coin it
+     * would have named next.
+     */
+    public function test_the_two_unit_coin_is_never_dispensed_as_change(): void
+    {
+        self::assertFalse(CoinDenomination::TWO_UNITS->isDispensableAsChange());
+    }
+
     #[DataProvider('dispensableDenominations')]
     public function test_the_small_coins_are_dispensable_as_change(CoinDenomination $denomination): void
     {
@@ -99,6 +116,7 @@ final class CoinDenominationTest extends TestCase
         yield '0.05' => [CoinDenomination::FIVE_CENTS];
         yield '0.10' => [CoinDenomination::TEN_CENTS];
         yield '0.25' => [CoinDenomination::TWENTY_FIVE_CENTS];
+        yield '0.50' => [CoinDenomination::FIFTY_CENTS];
     }
 
     public function test_it_exposes_its_amount_as_money(): void

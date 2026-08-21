@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\VendingMachine\Delivery\Http\Error;
 
 use App\VendingMachine\Domain\Exception\CannotDispenseChange;
+use App\VendingMachine\Domain\Exception\CoinNotAccepted;
 use App\VendingMachine\Domain\Exception\ConcurrentMachineModification;
 use App\VendingMachine\Domain\Exception\InsufficientFunds;
 use App\VendingMachine\Domain\Exception\InvalidMoneyAmount;
@@ -43,6 +44,7 @@ final class ErrorCatalog
     private const PROBLEMS = [
         // The value you sent is not valid input.
         UnsupportedCoin::class => ['status' => 422, 'code' => 'unsupported_coin', 'title' => 'Unsupported coin'],
+        CoinNotAccepted::class => ['status' => 422, 'code' => 'coin_not_accepted', 'title' => 'Coin not accepted'],
         InvalidMoneyAmount::class => ['status' => 422, 'code' => 'invalid_money_amount', 'title' => 'Invalid amount'],
         InvalidProductSelector::class => ['status' => 422, 'code' => 'invalid_product_selector', 'title' => 'Invalid product selector'],
         InvalidRequestPayload::class => ['status' => 422, 'code' => 'invalid_request_payload', 'title' => 'Invalid request payload'],

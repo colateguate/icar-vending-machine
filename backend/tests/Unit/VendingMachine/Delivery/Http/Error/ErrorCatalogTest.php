@@ -9,6 +9,7 @@ use App\VendingMachine\Delivery\Http\Error\ErrorCatalog;
 use App\VendingMachine\Delivery\Http\Error\InvalidRequestPayload;
 use App\VendingMachine\Delivery\Http\Error\MalformedJson;
 use App\VendingMachine\Domain\Exception\CannotDispenseChange;
+use App\VendingMachine\Domain\Exception\CoinNotAccepted;
 use App\VendingMachine\Domain\Exception\ConcurrentMachineModification;
 use App\VendingMachine\Domain\Exception\InsufficientFunds;
 use App\VendingMachine\Domain\Exception\InvalidMoneyAmount;
@@ -78,7 +79,8 @@ final class ErrorCatalogTest extends TestCase
      */
     public static function theStatusRule(): iterable
     {
-        yield 'a coin the machine does not take is not valid input' => [UnsupportedCoin::class, 422, 'unsupported_coin'];
+        yield 'a coin no machine can read is not valid input' => [UnsupportedCoin::class, 422, 'unsupported_coin'];
+        yield 'a coin this machine has been switched off for is not valid input' => [CoinNotAccepted::class, 422, 'coin_not_accepted'];
         yield 'a price that is not an amount is not valid input' => [InvalidMoneyAmount::class, 422, 'invalid_money_amount'];
         yield 'a selector that is not an identifier is not valid input' => [InvalidProductSelector::class, 422, 'invalid_product_selector'];
         yield 'a field of the wrong type is not valid input' => [InvalidRequestPayload::class, 422, 'invalid_request_payload'];

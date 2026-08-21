@@ -122,6 +122,7 @@ final class ProvisionMachineHandlerTest extends TestCase
         return new ProvisionMachineCommand(
             [['selector' => 'WATER', 'name' => 'Water', 'price' => '0.65', 'count' => 10]],
             [25 => 4],
+            [5, 10, 25, 100],
         );
     }
 

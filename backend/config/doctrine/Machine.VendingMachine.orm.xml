@@ -35,6 +35,11 @@
         <field name="changeReserve" type="coin_collection" column="change_reserve"/>
         <field name="insertedCoins" type="coin_collection" column="inserted_coins"/>
 
+        <!-- Which denominations this machine takes. State rather than a
+             property of the model: a service visit replaces it, and an empty
+             list is a machine switched off at the acceptor. -->
+        <field name="acceptedCoins" type="accepted_coins" column="accepted_coins"/>
+
     </entity>
 
 </doctrine-mapping>

@@ -66,6 +66,35 @@ abstract class VendingMachineRepositoryContract extends TestCase
         self::assertMachineStateMatches($machine, $repository->find(MachineId::fromString('lobby-01')));
     }
 
+    /**
+     * Two machines that differ only in which coins they take must come back
+     * different. An adapter that stored nothing at all would pass every other
+     * test here, because every other test builds a machine taking the same four
+     * coins — so the narrowed set and the empty one are asked for by name.
+     */
+    final public function test_it_remembers_which_coins_a_machine_takes(): void
+    {
+        $repository = $this->repository();
+        $repository->save(
+            VendingMachineBuilder::aStockedMachine()
+                ->withId('lobby-01')
+                ->accepting(CoinDenomination::TEN_CENTS, CoinDenomination::TWO_UNITS)
+                ->build(),
+        );
+        $repository->save(
+            VendingMachineBuilder::aStockedMachine()->withId('lobby-02')->acceptingNothing()->build(),
+        );
+
+        $narrowed = $repository->find(MachineId::fromString('lobby-01'));
+        self::assertTrue($narrowed->acceptedCoins()->accepts(CoinDenomination::TWO_UNITS));
+        self::assertFalse($narrowed->acceptedCoins()->accepts(CoinDenomination::FIVE_CENTS));
+
+        self::assertTrue(
+            $repository->find(MachineId::fromString('lobby-02'))->isOutOfService(),
+            'a machine switched off at the acceptor comes back switched off',
+        );
+    }
+
     final public function test_it_keeps_machines_apart_by_identifier(): void
     {
         $repository = $this->repository();
@@ -104,6 +133,10 @@ abstract class VendingMachineRepositoryContract extends TestCase
             'change reserve',
         );
         self::assertSame($expected->insertedCoins()->toArray(), $actual->insertedCoins()->toArray(), 'escrow');
+        self::assertTrue(
+            $expected->acceptedCoins()->equals($actual->acceptedCoins()),
+            'which coins the machine takes',
+        );
     }
 
     /**

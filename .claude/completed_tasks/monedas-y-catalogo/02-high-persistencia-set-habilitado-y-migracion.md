@@ -1,5 +1,11 @@
 # Persistir el set habilitado: columna, tipo DBAL y migración con default
 
+> **Resuelto junto con el 01, en el mismo commit.** No era separable: el campo
+> nuevo del agregado sin su columna deja a Doctrine rehidratando una propiedad
+> tipada sin inicializar, así que todo lo que toca persistencia responde 500. Un
+> commit del 01 en solitario habría quedado rojo, y la regla del repo es que
+> cada commit va verde.
+
 ## Contexto
 
 El ticket 01 añade el set habilitado al agregado; sin columna, una máquina rehidratada lo perdería. El mapping vive en XML fuera de la clase (`backend/config/doctrine/Machine.VendingMachine.orm.xml:32-36`) con un custom type por VO que posee columna (`backend/config/packages/doctrine.yaml`, types `machine_id`/`inventory`/`coin_collection`). Las máquinas existentes deben migrar al default de fábrica: las 4 del enunciado habilitadas (decisión K4).
