@@ -229,8 +229,11 @@ No attributes in the core either: routes live in YAML, handlers are registered b
 ```bash
 make test           # 469 tests, 3 272 assertions
 make test-unit      # 289 of them, no kernel and no database
-make qa             # style + PHPStan max + Deptrac + schema drift + tests
+make qa             # both halves; every CI gate that needs no network
 make test-mutation  # Infection over Domain + Application — MSI 100%
+
+make front-test     # the panel's suite
+make front-lint     # ESLint, accessibility rules included
 ```
 
 | Suite | Tests | Answers |
