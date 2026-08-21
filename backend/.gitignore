@@ -23,4 +23,17 @@
 /.deptrac.cache
 /.phpunit.cache/
 /.php-cs-fixer.cache
+
+# Auto-generated, and there is no correct content to commit: the file gains or
+# loses its "when@dev" shapes depending on which APP_ENV last booted the
+# console, so `make qa` and opening the project leave it in opposite states. It
+# had already ridden along in five feature commits before anyone noticed.
+#
+# Nothing here reads it. PHPStan analyses src and tests only, and what it
+# provides is autocompletion for PHP-based configuration — this project's config
+# is YAML and XML. It regenerates on the next console command if anyone wants it.
+#
+# The php-cs-fixer exclusion for it stays: that Finder walks the disk, not the
+# index, so it still meets the file.
+/config/reference.php
 ###< project ###
