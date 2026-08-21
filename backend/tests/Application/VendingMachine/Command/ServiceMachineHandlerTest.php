@@ -54,6 +54,56 @@ final class ServiceMachineHandlerTest extends TestCase
         self::assertSame(0, $stored->changeReserve()->countOf(CoinDenomination::TWENTY_FIVE_CENTS));
     }
 
+    /**
+     * The command carries cents, like every other amount that crosses this
+     * layer, and the handler turns them into the denominations the model
+     * speaks. The translation is the validation too: a number the acceptor
+     * cannot read never becomes a denomination.
+     */
+    public function test_it_replaces_which_coins_the_machine_takes(): void
+    {
+        $repository = self::aRepositoryHoldingAMachine();
+        $handler = self::handler($repository, new SpyEventBus());
+
+        $handler(new ServiceMachineCommand([], [], [50, 200]));
+
+        $stored = $repository->find(MachineId::fromString(self::MACHINE_ID));
+        self::assertTrue($stored->acceptedCoins()->accepts(CoinDenomination::FIFTY_CENTS));
+        self::assertTrue($stored->acceptedCoins()->accepts(CoinDenomination::TWO_UNITS));
+        self::assertFalse($stored->acceptedCoins()->accepts(CoinDenomination::ONE_UNIT));
+    }
+
+    /**
+     * A visit that says nothing about coins leaves the acceptor alone. This is
+     * the whole reason the field is nullable rather than a list that would
+     * arrive empty and read as "take nothing from now on".
+     */
+    public function test_a_visit_that_says_nothing_about_coins_leaves_them_alone(): void
+    {
+        $repository = self::aRepositoryHoldingAMachine();
+        $before = $repository->find(MachineId::fromString(self::MACHINE_ID))->acceptedCoins();
+        $handler = self::handler($repository, new SpyEventBus());
+
+        $handler(new ServiceMachineCommand([], [5 => 3]));
+
+        $stored = $repository->find(MachineId::fromString(self::MACHINE_ID));
+        self::assertTrue($stored->acceptedCoins()->equals($before));
+    }
+
+    /**
+     * The state the model makes representable on purpose: a technician can
+     * switch the acceptor off entirely, and the machine stops being payable.
+     */
+    public function test_a_visit_can_take_the_machine_out_of_service(): void
+    {
+        $repository = self::aRepositoryHoldingAMachine();
+        $handler = self::handler($repository, new SpyEventBus());
+
+        $handler(new ServiceMachineCommand([], [], []));
+
+        self::assertTrue($repository->find(MachineId::fromString(self::MACHINE_ID))->isOutOfService());
+    }
+
     public function test_it_announces_the_visit(): void
     {
         $events = new SpyEventBus();

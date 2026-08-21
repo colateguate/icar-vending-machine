@@ -71,6 +71,13 @@
         // THIS SUPPRESSION EXPIRES if a non-canonical denomination is ever
         // added. Delete these entries then: the mutants become killable, and
         // leaving them muted would hide a real defect.
+        //
+        // Re-checked when 0.50 and 2.00 were added. The dispensable set went
+        // from {5, 10, 25} to {5, 10, 25, 50}, which divided by five is
+        // {1, 2, 5, 10} — the 1-2-5 series, still canonical, so the property
+        // above survives. Measured rather than argued: the entries below were
+        // removed, Infection was run, and the same mutants escaped, which is
+        // what unkillable looks like from outside. Put back, MSI is 100% again.
         "IncrementInteger": { "ignore": ["App\\VendingMachine\\Domain\\Dispensing\\OptimalChangeStrategy::scoreEverySubtotal", "App\\VendingMachine\\Domain\\Dispensing\\OptimalChangeStrategy::rebuildSelection"] },
         "DecrementInteger": { "ignore": ["App\\VendingMachine\\Domain\\Dispensing\\OptimalChangeStrategy::scoreEverySubtotal", "App\\VendingMachine\\Domain\\Dispensing\\OptimalChangeStrategy::rebuildSelection"] },
         "Plus": { "ignore": ["App\\VendingMachine\\Domain\\Dispensing\\OptimalChangeStrategy::scoreEverySubtotal"] },

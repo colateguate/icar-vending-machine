@@ -9,7 +9,9 @@ use App\Shared\Domain\Bus\Event\EventBus;
 use App\VendingMachine\Application\Shared\Catalogue;
 use App\VendingMachine\Application\Shared\MachineLocator;
 use App\VendingMachine\Domain\Machine\VendingMachineRepository;
+use App\VendingMachine\Domain\Money\AcceptedCoins;
 use App\VendingMachine\Domain\Money\CoinCollection;
+use App\VendingMachine\Domain\Money\CoinDenomination;
 
 /**
  * Turns the request's plain arrays into the machine's own vocabulary.
@@ -35,6 +37,16 @@ final readonly class ServiceMachineHandler implements CommandHandler
         $machine->service(
             Catalogue::fromRows($command->products),
             CoinCollection::fromCounts($command->changeReserve),
+            // A visit that says nothing about coins leaves the acceptor as it
+            // was. The aggregate is told outright either way: "unspecified" is
+            // a fact about the request, and translating it is this layer's job
+            // rather than a nullable argument the model has to reason about.
+            null === $command->acceptedCoins
+                ? $machine->acceptedCoins()
+                : AcceptedCoins::of(...array_map(
+                    CoinDenomination::fromCents(...),
+                    $command->acceptedCoins,
+                )),
         );
 
         $this->repository->save($machine);

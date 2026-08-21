@@ -27,10 +27,15 @@ final readonly class ServiceMachineCommand implements Command
     /**
      * @param list<array{selector: string, name: string, price: string, count: int}> $products
      * @param array<int, int>                                                        $changeReserve denomination in cents => how many
+     * @param list<int>|null                                                         $acceptedCoins denominations in cents the machine
+     *                                                                                              takes from now on; null when the
+     *                                                                                              caller said nothing about coins,
+     *                                                                                              which leaves the acceptor as it is
      */
     public function __construct(
         public array $products,
         public array $changeReserve,
+        public ?array $acceptedCoins = null,
     ) {
     }
 }

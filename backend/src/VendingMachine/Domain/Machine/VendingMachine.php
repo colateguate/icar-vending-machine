@@ -14,9 +14,11 @@ use App\VendingMachine\Domain\Event\CoinsRefunded;
 use App\VendingMachine\Domain\Event\MachineServiced;
 use App\VendingMachine\Domain\Event\ProductDispensed;
 use App\VendingMachine\Domain\Exception\CannotDispenseChange;
+use App\VendingMachine\Domain\Exception\CoinNotAccepted;
 use App\VendingMachine\Domain\Exception\InsufficientFunds;
 use App\VendingMachine\Domain\Exception\ProductOutOfStock;
 use App\VendingMachine\Domain\Exception\UnknownProductSelector;
+use App\VendingMachine\Domain\Money\AcceptedCoins;
 use App\VendingMachine\Domain\Money\CoinCollection;
 use App\VendingMachine\Domain\Money\CoinDenomination;
 use App\VendingMachine\Domain\Money\Money;
@@ -63,16 +65,29 @@ final class VendingMachine extends AggregateRoot
         private Inventory $inventory,
         private CoinCollection $changeReserve,
         private CoinCollection $insertedCoins,
+        private AcceptedCoins $acceptedCoins,
     ) {
     }
 
-    public static function provision(MachineId $id, Inventory $inventory, CoinCollection $changeReserve): self
-    {
-        return new self($id, $inventory, $changeReserve, CoinCollection::empty());
+    public static function provision(
+        MachineId $id,
+        Inventory $inventory,
+        CoinCollection $changeReserve,
+        AcceptedCoins $acceptedCoins,
+    ): self {
+        return new self($id, $inventory, $changeReserve, CoinCollection::empty(), $acceptedCoins);
     }
 
+    /**
+     * @throws CoinNotAccepted when this machine has been told not to take that
+     *                         denomination
+     */
     public function insert(CoinDenomination $coin): void
     {
+        if (!$this->acceptedCoins->accepts($coin)) {
+            throw CoinNotAccepted::atTheSlot($coin);
+        }
+
         $this->insertedCoins = $this->insertedCoins->add($coin);
 
         $this->recordThat(new CoinInserted($this->id, $coin));
@@ -143,8 +158,19 @@ final class VendingMachine extends AggregateRoot
             throw InsufficientFunds::needsMore($price->subtract($insertedAmount));
         }
 
+        // Everything the machine holds, and — separately — the part of it the
+        // machine is allowed to pay out. They differ when a denomination has
+        // been switched off with coins of it still inside: that money is the
+        // machine's, and it never comes back out.
+        //
+        // Only the narrowed pool goes to the policy. Narrowing the one that
+        // becomes the new reserve would make the machine forget the stranded
+        // coins the moment it gave change.
         $availableCoins = $this->changeReserve->merge($this->insertedCoins);
-        $change = $strategy->selectCoins($insertedAmount->subtract($price), $availableCoins);
+        $change = $strategy->selectCoins(
+            $insertedAmount->subtract($price),
+            $availableCoins->restrictedTo($this->acceptedCoins),
+        );
 
         // Both new states are computed while the machine is still untouched.
         // subtract() is the only check that the policy honoured its contract and
@@ -175,7 +201,21 @@ final class VendingMachine extends AggregateRoot
      */
     public function requiresExactChange(): bool
     {
-        return $this->changeReserve->dispensableOnly()->isEmpty();
+        return $this->changeReserve
+            ->restrictedTo($this->acceptedCoins)
+            ->dispensableOnly()
+            ->isEmpty();
+    }
+
+    /**
+     * A machine that takes no coin at all. Nobody can build an escrow, so
+     * nobody can pay for anything: the state a technician leaves behind when
+     * they switch the acceptor off, said in the model's own terms rather than
+     * kept in a flag beside it.
+     */
+    public function isOutOfService(): bool
+    {
+        return $this->acceptedCoins->isEmpty();
     }
 
     /**
@@ -188,15 +228,23 @@ final class VendingMachine extends AggregateRoot
      * Any money a customer had inserted is returned first: someone opening the
      * machine does not get to keep it. Those coins go to the return tray, so
      * they do not join the reserve the technician just loaded.
+     *
+     * The coin acceptor is declared here too, and in the same breath as the
+     * till on purpose: switching a denomination off leaves its coins where they
+     * are, so the technician has to be able to say both "stop taking 0.50" and
+     * "there are still four of them in there" in one visit. The reserve is
+     * therefore never checked against the accepted set — refusing to hear it
+     * would make the truth unsayable.
      */
-    public function service(Inventory $inventory, CoinCollection $changeReserve): void
+    public function service(Inventory $inventory, CoinCollection $changeReserve, AcceptedCoins $acceptedCoins): void
     {
         $this->returnInsertedCoins();
 
         $this->inventory = $inventory;
         $this->changeReserve = $changeReserve;
+        $this->acceptedCoins = $acceptedCoins;
 
-        $this->recordThat(new MachineServiced($this->id, $inventory, $changeReserve));
+        $this->recordThat(new MachineServiced($this->id, $inventory, $changeReserve, $acceptedCoins));
     }
 
     public function id(): MachineId
@@ -217,6 +265,11 @@ final class VendingMachine extends AggregateRoot
     public function insertedCoins(): CoinCollection
     {
         return $this->insertedCoins;
+    }
+
+    public function acceptedCoins(): AcceptedCoins
+    {
+        return $this->acceptedCoins;
     }
 
     public function insertedAmount(): Money

@@ -117,11 +117,31 @@ final class ProvisionMachineHandlerTest extends TestCase
         self::assertSame([], $events->published(), 'nothing happened, so nothing is announced');
     }
 
+    /**
+     * The coins a machine is installed taking, asked for by name and with
+     * denominations no other test uses. Every other provisioning here happens
+     * to name the four of the brief, which are also the builder's default — so
+     * a handler that ignored the command and installed some fixed set would
+     * satisfy all of them and only this one.
+     */
+    public function test_it_installs_the_machine_taking_the_coins_it_was_told(): void
+    {
+        $repository = new InMemoryVendingMachineRepository();
+
+        self::handler($repository, new SpyEventBus())(new ProvisionMachineCommand([], [], [50, 200]));
+
+        $accepted = $repository->find(MachineId::fromString(self::MACHINE_ID))->acceptedCoins();
+        self::assertTrue($accepted->accepts(CoinDenomination::FIFTY_CENTS));
+        self::assertTrue($accepted->accepts(CoinDenomination::TWO_UNITS));
+        self::assertFalse($accepted->accepts(CoinDenomination::ONE_UNIT));
+    }
+
     private static function aProvisioning(): ProvisionMachineCommand
     {
         return new ProvisionMachineCommand(
             [['selector' => 'WATER', 'name' => 'Water', 'price' => '0.65', 'count' => 10]],
             [25 => 4],
+            [5, 10, 25, 100],
         );
     }
 

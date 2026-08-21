@@ -10,6 +10,7 @@ doctrine:
             machine_id: App\VendingMachine\Infrastructure\Persistence\Doctrine\Type\MachineIdType
             inventory: App\VendingMachine\Infrastructure\Persistence\Doctrine\Type\InventoryType
             coin_collection: App\VendingMachine\Infrastructure\Persistence\Doctrine\Type\CoinCollectionType
+            accepted_coins: App\VendingMachine\Infrastructure\Persistence\Doctrine\Type\AcceptedCoinsType
 
     orm:
         auto_generate_proxy_classes: true

@@ -80,7 +80,7 @@ final class VendingMachineExactChangeTest extends TestCase
         $machine = VendingMachineBuilder::aStockedMachine()->withNoChange()->build();
         self::assertTrue($machine->requiresExactChange());
 
-        $machine->service($machine->inventory(), CoinCollection::fromCounts([5 => 20, 10 => 20]));
+        $machine->service($machine->inventory(), CoinCollection::fromCounts([5 => 20, 10 => 20]), $machine->acceptedCoins());
 
         self::assertFalse($machine->requiresExactChange());
     }

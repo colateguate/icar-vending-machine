@@ -34,7 +34,7 @@ const showing =
  * Every code the API's `ErrorCatalog` can answer with, in the order that table
  * declares them, and the sentence the screen shows for each.
  *
- * Four of the eleven this panel cannot provoke, and they are marked below
+ * Four of the twelve this panel cannot provoke, and they are marked below
  * rather than deleted. The distinction is worth being explicit about, because
  * an entry nobody can reach is otherwise indistinguishable from an entry
  * nobody has tested. They stay because this map renders a *published
@@ -49,6 +49,12 @@ const MESSAGES = {
   // `acceptedCoins`, so every denomination this panel sends came from the
   // machine's own answer — and so did every price.
   unsupported_coin: () => 'Coin rejected',
+  // Reachable, and for the same reason `unknown_product` is: the buttons show
+  // the coins the machine took when the panel loaded, and a service visit can
+  // switch a denomination off underneath them. The wording says the machine
+  // stopped taking it rather than that the coin is bad, which is the whole
+  // difference between this code and the one above it.
+  coin_not_accepted: () => 'Coin no longer taken',
   invalid_money_amount: () => 'Coin rejected',
   // Reachable. The catalogue on screen is the one the machine published when
   // the panel loaded, and a service visit — another tab, or the technician

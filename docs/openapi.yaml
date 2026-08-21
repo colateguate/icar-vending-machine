@@ -213,13 +213,21 @@ paths:
                 $ref: '#/components/schemas/Problem'
               examples:
                 unsupportedCoin:
-                  summary: A denomination the machine does not accept
+                  summary: A denomination no machine of this model can read
                   value:
                     type: /problems/unsupported-coin
                     title: Unsupported coin
                     status: 422
                     detail: The machine does not accept coins of 2 cents.
                     code: unsupported_coin
+                coinNotAccepted:
+                  summary: A readable denomination this machine is switched off for
+                  value:
+                    type: /problems/coin-not-accepted
+                    title: Coin not accepted
+                    status: 422
+                    detail: This machine is not currently taking 0.50 coins.
+                    code: coin_not_accepted
                 coinThatIsNotAnAmount:
                   summary: Not a decimal amount
                   value:
