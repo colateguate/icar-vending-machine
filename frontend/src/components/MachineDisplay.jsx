@@ -30,10 +30,34 @@ const showing =
     return value ? write(value) : fallback;
   };
 
+/**
+ * Every code the API's `ErrorCatalog` can answer with, in the order that table
+ * declares them, and the sentence the screen shows for each.
+ *
+ * Four of the eleven this panel cannot provoke, and they are marked below
+ * rather than deleted. The distinction is worth being explicit about, because
+ * an entry nobody can reach is otherwise indistinguishable from an entry
+ * nobody has tested. They stay because this map renders a *published
+ * contract*, not the panel's current call sites: reachability is a property of
+ * today's screen and changes the moment a field is added, while the contract
+ * is what the API promises to anyone. The cost is one line each; the
+ * alternative is that a documented failure arrives one day and the machine
+ * says "Out of order" about a request it understood perfectly well.
+ */
 const MESSAGES = {
+  // Not reachable: the coin buttons and the till rows are both rendered from
+  // `acceptedCoins`, so every denomination this panel sends came from the
+  // machine's own answer — and so did every price.
   unsupported_coin: () => 'Coin rejected',
   invalid_money_amount: () => 'Coin rejected',
+  // Reachable. The catalogue on screen is the one the machine published when
+  // the panel loaded, and a service visit — another tab, or the technician
+  // standing at the same machine — can replace it. Nothing refetches, so a
+  // button here can name a product the machine has stopped stocking.
   unknown_product: () => 'Unknown selection',
+  // Not reachable: a selector is only ever echoed back from what the machine
+  // published. The service form edits counts and nothing else, so no selector
+  // is ever typed into this panel.
   invalid_product_selector: () => 'Unknown selection',
   product_out_of_stock: () => 'Sold out',
   insufficient_funds: showing('missingAmount', (amount) => `Insert ${amount} more`),
@@ -45,12 +69,15 @@ const MESSAGES = {
   // `field` exists so a client can point at the box that is wrong instead of
   // relaying an English sentence about it. The service form is where this one
   // comes from, and where naming the field is the difference between a usable
-  // message and a shrug.
+  // message and a shrug. Reachable, and cheaply: the count boxes are the only
+  // values a person types here, and `type="number"` accepts `1e21` — which
+  // survives `min`, `step` and `required`, and which the API refuses.
   invalid_request_payload: showing(
     'field',
     (field) => `Invalid: ${field}`,
     'Request not understood',
   ),
+  // Not reachable: every body this panel sends is built by `JSON.stringify`.
   malformed_json: () => 'Request not understood',
   machine_not_provisioned: () => 'Out of service',
 };

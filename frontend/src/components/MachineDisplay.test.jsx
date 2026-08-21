@@ -21,6 +21,34 @@ describe('MachineDisplay', () => {
   });
 
   /**
+   * The map renders the API's error catalogue, so the whole of it is pinned
+   * here rather than the handful this panel happens to provoke. From outside,
+   * an entry nobody tested and an entry nobody can reach look identical; the
+   * component says in comments which of them is which, and this says what each
+   * one puts on the screen.
+   *
+   * These are the eight codes whose sentence is fixed. The other three read an
+   * extension and have their own tests below, both branches each — eleven, the
+   * length of the catalogue. `product_out_of_stock` appears again further down
+   * for a different question: that one screen shows the message or the amount
+   * and never both.
+   */
+  it.each([
+    ['unsupported_coin', 'Coin rejected'],
+    ['invalid_money_amount', 'Coin rejected'],
+    ['unknown_product', 'Unknown selection'],
+    ['invalid_product_selector', 'Unknown selection'],
+    ['product_out_of_stock', 'Sold out'],
+    ['concurrent_modification', 'Busy, try again'],
+    ['malformed_json', 'Request not understood'],
+    ['machine_not_provisioned', 'Out of service'],
+  ])('answers %s with "%s"', (code, sentence) => {
+    render(<MachineDisplay amount="0.65" error={refusal(code)} />);
+
+    expect(screen.getByRole('status', { name: 'Display' })).toHaveTextContent(sentence);
+  });
+
+  /**
    * `missingAmount` and `changeDue` are extensions the API puts in the document
    * precisely so a client does not have to find the number inside an English
    * sentence. Reading them is what proves `detail` is never parsed.
