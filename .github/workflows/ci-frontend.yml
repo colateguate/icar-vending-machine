@@ -60,10 +60,14 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          # The 22 line, while package.json states the floor the dependency
-          # tree actually needs — 22.22.2, set by jsdom. The two say different
-          # things on purpose: `engines` is "below this we know it breaks",
-          # this is "this is the line the suite is known to pass on".
+          # The 22 line, while package.json states the range the dependency
+          # tree actually needs — `^22.22.2 || ^24.15.0 || >=26.0.0`, which is
+          # jsdom's. The two say different things on purpose: `engines` is
+          # "outside this we know it breaks", this is "this is the line the
+          # suite is known to pass on". They agree today because the newest
+          # 22 satisfies the first alternative, and that is worth knowing
+          # rather than assuming: the range is a disjunction, so a runner that
+          # drifted to 23.x or to 24.0 would satisfy neither.
           #
           # A line rather than an exact patch, and that is the opposite trade
           # from the actions above. Pinning a SHA is right because nothing
@@ -100,11 +104,31 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
 
-      # Only the browser these specs run against. `--with-deps` because a bare
-      # runner has none of the shared libraries Chromium links, and only
-      # chromium because the accessibility tree is read over CDP, which no other
-      # engine speaks. A second browser here would cost a download and answer no
-      # question this suite asks.
+      # The version the lock pins, read from the lock rather than written
+      # here: a cache key that names a version by hand is a cache key that
+      # serves yesterday's browser the day the dependency moves.
+      - id: playwright
+        run: echo "version=$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")" >> "$GITHUB_OUTPUT"
+
+      # 114 MB of Chromium, downloaded on every run until this. Same idea as
+      # the Composer cache in ci-backend.yml, and the same trap avoided: the
+      # key depends on what fixes the version, not on the branch or the run.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.playwright.outputs.version }}
+
+      # Only the browser these specs run against, and only chromium because the
+      # accessibility tree is read over CDP, which no other engine speaks. A
+      # second browser would cost a download and answer no question this suite
+      # asks.
+      #
+      # It runs whether the cache hit or missed, and is not wrapped in a
+      # condition. `--with-deps` installs the shared libraries Chromium links
+      # against, and those live in the runner's own package manager rather than
+      # in ~/.cache/ms-playwright — skipping this step on a cache hit would
+      # restore a browser onto a machine with nothing to run it on. On a hit it
+      # finds the binary already there and returns in seconds.
       - run: npx playwright install --with-deps chromium
 
       # The real images, because two of these five specs are questions about

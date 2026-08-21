@@ -129,14 +129,30 @@ make front-e2e      # browser smoke against the running stack (needs `make up`)
 ```
 
 The whole repo is driven from `make`, both halves. The `front-*` targets warn
-rather than stop when the running Node is below the floor `frontend/package.json`
-declares: without Node nothing can run, but the suite does pass today on a
-version jsdom says it does not support, and refusing to run a suite that works
-would be a decision with its own ticket rather than a guard.
+rather than stop when the running Node does not satisfy what
+`frontend/package.json` declares: without Node nothing can run, but the suite
+does pass today on a version jsdom says it does not support, and refusing to
+run a suite that works would be a different decision with different
+consequences.
+
+That decision was taken in ticket 25 and it was to keep warning. `npm ci`
+already refuses on its own terms if anyone wants it to — `engine-strict=true`
+in an `.npmrc` — and measured here, it declines to install at all, on the
+manifest's own `engines` rather than on any dependency's. A repository whose
+only development machine cannot install it is not a stricter repository.
+
+The range itself is a disjunction (`^22.22.2 || ^24.15.0 || >=26.0.0`) because
+that is what jsdom asks for, and the `>=22.22.2` it used to declare was not a
+simplification of it: `>=` also accepts Node 23.x and 24.0 through 24.14, every
+one of which jsdom refuses. The comparison lives in
+`frontend/scripts/node-version.js` and has tests, because this is the second
+attempt — the first ranked `>=22.12` as NaN and made the warning disappear.
+It answers three things rather than two, and the third is the one that matters:
+a range it was never taught is reported as unreadable, never as satisfied.
 
 Direct equivalents from `backend/`: `vendor/bin/phpunit --testsuite unit|application|integration|acceptance`, `vendor/bin/phpstan analyse`, `vendor/bin/deptrac analyse` (config auto-detected from `deptrac.php`), `vendor/bin/php-cs-fixer fix`. Note: PHPUnit config is `phpunit.dist.xml` (PHPUnit 11 recipe convention).
 
-Mutation testing **does run locally**: Xdebug is installed with `xdebug.mode=off`, which is why it costs nothing on every other command, and the `make test-mutation` target turns coverage on for its own run (`XDEBUG_MODE=coverage`). It takes ~4 minutes and it is the only gate not in `make qa` for that reason — run it whenever a change lands in `Domain/` or `Application/`, which is the scope Infection is configured for.
+Mutation testing **does run locally**: Xdebug is installed with `xdebug.mode=off`, which is why it costs nothing on every other command, and the `make test-mutation` target turns coverage on for its own run (`XDEBUG_MODE=coverage`). It takes about 37 seconds on 24 cores — it took 3m 53s until `--threads=max` was found to mean one thread on Windows — and it stays out of `make qa` because it is the only gate that needs coverage instrumentation, not because of the clock. Run it whenever a change lands in `Domain/` or `Application/`, which is the scope Infection is configured for.
 
 `make schema-check` (also part of `make qa`) migrates a throwaway SQLite file and runs `doctrine:schema:validate`, so the mapping and the migration cannot drift apart in silence.
 

@@ -24,7 +24,7 @@ export default defineConfig({
      * by suffix — `.test.jsx` here, `.spec.js` there — and neither is left to
      * a default.
      */
-    include: ['src/**/*.test.{js,jsx}'],
+    include: ['{src,scripts}/**/*.test.{js,jsx}'],
     environment: 'jsdom',
     setupFiles: ['./src/setupTests.js'],
     // Components are queried by role, never by class, so the stylesheet has

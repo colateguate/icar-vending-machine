@@ -3,6 +3,21 @@
 BACKEND := backend
 FRONTEND := frontend
 
+# How many processes Infection may run at once.
+#
+# Its own `--threads=max` is not usable here, and not because core detection
+# fails. `CpuCoresCountProvider::provide()` opens with a hard-coded
+# `return 1` whenever `PHP_WINDOWS_VERSION_MAJOR` is defined, so on Windows the
+# flag is accepted, is valid, and does nothing at all: the run ends saying
+# `Threads: 1` and takes 3m 53s where four threads take 1m 11s. The counter it
+# never gets round to calling answers 24 on that same machine.
+#
+# `nproc` is present in the shell make uses on both platforms, so it is asked
+# directly rather than delegated. Overridable, and the override has a use:
+# `make test-mutation THREADS=1` is how you get a log worth reading when a
+# mutant needs looking at.
+THREADS ?= $(shell nproc 2>/dev/null || echo 4)
+
 .PHONY: help up down reset test test-unit test-application test-integration test-acceptance qa schema-check cs-fix test-mutation front-install front-dev front-test front-lint front-build front-e2e _ensure-backend _ensure-node _ensure-frontend
 
 help:
@@ -99,7 +114,7 @@ cs-fix: _ensure-backend
 # every other command slower, and this is the only one that needs it.
 test-mutation: _ensure-backend
 	@cd $(BACKEND) && if find src/VendingMachine/Domain src/VendingMachine/Application -name '*.php' 2>/dev/null | grep -q .; then \
-		XDEBUG_MODE=coverage vendor/bin/infection --threads=max --show-mutations; \
+		XDEBUG_MODE=coverage vendor/bin/infection --threads=$(THREADS) --show-mutations; \
 	else \
 		echo "No Domain/Application code yet - skipping mutation testing (arrives with ticket 04)."; \
 	fi
