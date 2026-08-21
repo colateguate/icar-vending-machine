@@ -3,6 +3,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import CountField from './CountField';
 import { seedForm } from './serviceForm';
 
+// The whole `service` block, rows included. CountField renders elements of this
+// block rather than a block of its own, so it imports no stylesheet.
+import './ServiceDrawer.css';
+
 /**
  * The door the person with the key opens, and the form behind it.
  *

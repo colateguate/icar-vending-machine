@@ -1,0 +1,115 @@
+/*
+ * The cabinet itself: the box, the glass over the shelf, the column of controls
+ * down the right, and the cavity at the bottom where things land.
+ *
+ * A vending machine is tall and narrow, so the whole thing is capped at a width
+ * that keeps that proportion instead of stretching across a desktop monitor.
+ */
+
+.machine {
+  background: linear-gradient(180deg, var(--steel-600) 0%, var(--steel-700) 40%, var(--steel-800) 100%);
+  border: 1px solid var(--steel-900);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-cabinet), var(--bevel-raised);
+  margin: 0 auto;
+  max-width: 46rem;
+  overflow: hidden;
+}
+
+/* The brand band across the top, painted on rather than screwed on. */
+.machine__brand {
+  background: linear-gradient(180deg, var(--brand) 0%, var(--brand-dark) 100%);
+  border-bottom: 2px solid var(--steel-900);
+  color: #fff;
+  font-size: 1.25rem;
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.18em;
+  margin: 0;
+  padding: var(--space-4) var(--space-5);
+}
+
+.machine__body {
+  display: grid;
+  gap: var(--space-5);
+  grid-template-columns: minmax(0, 1fr) 15rem;
+  padding: var(--space-5);
+}
+
+/*
+ * The glass. Sunken into the cabinet, with a diagonal sheen laid over it —
+ * and the sheen is `pointer-events: none`, which is the one rule that keeps a
+ * decorative overlay decorative. An element drawn on top of the shelf that
+ * still swallows clicks would turn a stylesheet into a behaviour change, which
+ * is precisely what this ticket promised not to be.
+ */
+.machine__window {
+  background: linear-gradient(160deg, #10141a 0%, #171c24 60%, var(--recess) 100%);
+  border: 1px solid var(--steel-500);
+  border-radius: var(--radius-md);
+  box-shadow: var(--bevel-sunken);
+  overflow: hidden;
+  padding: var(--space-4);
+  position: relative;
+}
+
+.machine__window::after {
+  background: linear-gradient(112deg, rgb(255 255 255 / 10%) 0%, rgb(255 255 255 / 3%) 32%, transparent 33%);
+  content: '';
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.machine__column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/*
+ * The cavity. The flap is the bar drawn across its top edge: a real machine has
+ * a hinged lid you push in with the back of your hand, and one gradient is
+ * enough to say so.
+ */
+.machine__tray {
+  background: linear-gradient(180deg, var(--steel-900) 0%, var(--steel-950) 100%);
+  border-top: 1px solid var(--steel-500);
+  box-shadow: var(--bevel-sunken);
+  padding: var(--space-5);
+  position: relative;
+}
+
+.machine__tray::before {
+  background: linear-gradient(180deg, var(--steel-600) 0%, var(--steel-800) 100%);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 60%);
+  content: '';
+  height: var(--space-3);
+  left: 50%;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  width: 60%;
+}
+
+/*
+ * Below this width the two columns stop being two columns. A cabinet on a phone
+ * is one narrow strip: shelf, then controls, then tray — which is the order a
+ * customer uses them in anyway.
+ */
+@media (max-width: 44rem) {
+  .machine__body {
+    grid-template-columns: minmax(0, 1fr);
+    padding: var(--space-4);
+  }
+
+  .machine__brand {
+    font-size: 1rem;
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .machine__tray {
+    padding: var(--space-4);
+  }
+}

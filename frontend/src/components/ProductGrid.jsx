@@ -1,3 +1,5 @@
+import './ProductGrid.css';
+
 /**
  * What is behind the glass. Every slot is one button, labelled with everything
  * a customer reads before pressing it, which is also everything a test needs to

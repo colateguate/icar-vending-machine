@@ -1,0 +1,49 @@
+/*
+ * The lamp. The bulb is the decoration; the sentence beside it is the
+ * information, and it is there in both states whether or not anyone can see the
+ * glow. This stylesheet is not allowed to reverse that — a skin that made the
+ * colour the only difference would have turned a fact into an ornament.
+ *
+ * Lit is a steady glow rather than a pulse on purpose. A blinking light in the
+ * corner of the panel pulls the eye for as long as the till is short of coins,
+ * which could be all day, and it says nothing the steady one does not.
+ */
+
+.lamp {
+  align-items: center;
+  background: var(--steel-900);
+  border: 1px solid var(--steel-700);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--bevel-sunken);
+  color: var(--ink-dim);
+  display: flex;
+  font-size: 0.75rem;
+  font-variant-caps: all-small-caps;
+  gap: var(--space-2);
+  letter-spacing: 0.1em;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+}
+
+.lamp__bulb {
+  background: radial-gradient(circle at 35% 32%, #767e88 0%, var(--lamp-off) 70%);
+  border-radius: 50%;
+  box-shadow: inset 0 0 3px rgb(0 0 0 / 70%);
+  flex: none;
+  height: 0.75rem;
+  width: 0.75rem;
+}
+
+.lamp--lit {
+  color: var(--lamp-amber);
+}
+
+.lamp--lit .lamp__bulb {
+  background: radial-gradient(circle at 35% 32%, #fff2cf 0%, var(--lamp-amber) 55%, #d18c14 100%);
+  /* Two shadows: the filament seen through the lens, and the light it throws
+     onto the metal around it. The thrown light is the bulb's own colour gone
+     faint, so it is derived from the token rather than copied out of it. */
+  box-shadow:
+    inset 0 0 3px rgb(255 255 255 / 60%),
+    0 0 10px color-mix(in srgb, var(--lamp-amber) 70%, transparent);
+}
