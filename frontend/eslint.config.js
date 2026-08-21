@@ -47,9 +47,12 @@ export default [
     },
   },
 
-  // Config files run in Node, not in the browser.
+  // Config files and build-time scripts run in Node, not in the browser. The
+  // distinction matters twice over here: `scripts/` is also the only place in
+  // this package where a `.js` file is executed by Node directly, so it is the
+  // only place where the `"type": "module"` in package.json has teeth.
   {
-    files: ['vite.config.js', 'eslint.config.js'],
+    files: ['vite.config.js', 'eslint.config.js', 'scripts/**/*.js'],
     languageOptions: { globals: globals.node },
   },
 ];

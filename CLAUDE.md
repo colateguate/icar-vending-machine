@@ -111,15 +111,27 @@ There is **no Deptrac for the frontend**. The rule is upheld by review (`fronten
 
 **Frontend test levels**: component tests (Vitest + Testing Library, mocking the `services/` module) and module tests (`services/`, mocking `fetch`). The seam is the module, never `global.fetch` inside a component test. Queries go by role and accessible name — `data-testid` is a last resort the test has to justify, and accessible markup is testable markup. `frontend/e2e/` is reserved for Playwright and deliberately empty. No mutation gate and no coverage threshold here: the evaluated suite is the backend's.
 
-## Commands (once scaffolding lands — tickets 2–3)
+## Commands
 
 ```bash
 make test           # all four PHPUnit suites
 make test-unit      # fast domain suite
-make qa             # PHPUnit + PHPStan (max) + Deptrac + php-cs-fixer
+make qa             # both halves; every CI gate that needs no network
 make test-mutation  # Infection on Domain + Application
-make up             # docker compose up (backend + frontend)
+make up             # docker compose up (the panel joins the stack in ticket 13b)
+
+make front-install  # npm ci
+make front-dev      # the panel against the API on :8000
+make front-test     # Vitest
+make front-lint     # ESLint, accessibility rules included
+make front-build    # production bundle
 ```
+
+The whole repo is driven from `make`, both halves. The `front-*` targets warn
+rather than stop when the running Node is below the floor `frontend/package.json`
+declares: without Node nothing can run, but the suite does pass today on a
+version jsdom says it does not support, and refusing to run a suite that works
+would be a decision with its own ticket rather than a guard.
 
 Direct equivalents from `backend/`: `vendor/bin/phpunit --testsuite unit|application|integration|acceptance`, `vendor/bin/phpstan analyse`, `vendor/bin/deptrac analyse` (config auto-detected from `deptrac.php`), `vendor/bin/php-cs-fixer fix`. Note: PHPUnit config is `phpunit.dist.xml` (PHPUnit 11 recipe convention).
 
