@@ -205,6 +205,11 @@ jobs:
       # and the Domain arrives with ticket 04.
       - run: |
           if find src/VendingMachine/Domain src/VendingMachine/Application -name '*.php' | grep -q .; then
+            # `max` and not `$(nproc)` as the Makefile uses, deliberately.
+            # Infection's core counter returns a hard-coded 1 on Windows, which
+            # is why the local target has to ask nproc itself; these runners are
+            # Linux, where `max` resolves properly. Two expressions because the
+            # two platforms differ, not because one of them was forgotten.
             vendor/bin/infection --threads=max --logger-github --no-progress
           else
             echo "No Domain/Application code yet - skipping mutation testing."
