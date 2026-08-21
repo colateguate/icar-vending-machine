@@ -1,0 +1,77 @@
+/*
+ * The one screen. Phosphor green behind glass, with the faint horizontal ruling
+ * of a panel that is lit from behind rather than printed.
+ *
+ * The minimum height is measured, not chosen: 4.5rem is what the longest
+ * message in the catalogue needs once it has wrapped to two lines, which is
+ * also more than the amount needs. Both states therefore occupy the same box,
+ * and the lamp and the coin slot below stay where they were — movement that
+ * means nothing, right next to the control someone is reaching for.
+ *
+ * It is a floor rather than a fixed height on purpose. A message longer than
+ * any of today's still grows the box, because the alternative is clipping the
+ * one sentence the machine had to say.
+ */
+
+/*
+ * Centred vertically with `align-content` on a block box rather than by making
+ * this a flex container, and that is a deliberate choice rather than a stylistic
+ * one. A flex or grid container drops any anonymous item that holds nothing but
+ * white space — and the single space between "Inserted" and the amount is a real
+ * text node this panel put there on purpose. Losing it would hand a screen
+ * reader "Inserted0.00". Block layout keeps the spans in inline flow, where a
+ * space is a space.
+ */
+.display {
+  align-content: center;
+  background: linear-gradient(180deg, #081810 0%, var(--led-bg) 100%);
+  border: 1px solid var(--steel-900);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--bevel-sunken);
+  color: var(--led);
+  font-family: var(--font-display);
+  letter-spacing: 0.08em;
+  margin: 0;
+  min-height: 4.5rem;
+  padding: var(--space-3) var(--space-4);
+  position: relative;
+  text-align: center;
+  /*
+   * The glow is the light bleeding off a segment, not a shadow under it — so
+   * it is the phosphor's own colour gone faint, and it says so. Written out as
+   * `rgb(77 240 138 / 45%)` it would be the same pixels today and a different
+   * colour from the segments the day anyone retunes `--led`, with nothing in
+   * the file to connect the two.
+   */
+  text-shadow: 0 0 8px color-mix(in srgb, var(--led) 45%, transparent);
+}
+
+/* Scanlines. Purely the look of a backlit panel, so it takes no clicks and is
+   invisible to anything that reads the page rather than looks at it. */
+.display::before {
+  background: repeating-linear-gradient(
+    180deg,
+    rgb(0 0 0 / 22%) 0px,
+    rgb(0 0 0 / 22%) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  border-radius: inherit;
+  content: '';
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.display__label {
+  color: var(--led-dim);
+  font-size: 0.6875rem;
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.2em;
+}
+
+.display__amount {
+  font-size: 1.75rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}

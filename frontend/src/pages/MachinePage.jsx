@@ -7,6 +7,8 @@ import ReturnCoinButton from '../components/ReturnCoinButton';
 import ServiceDrawer from '../components/ServiceDrawer';
 import { useMachine } from '../hooks/useMachine';
 
+import './MachinePage.css';
+
 /**
  * The single screen of the panel: it asks the hook for the machine, composes the
  * parts and hands each one the props it uses. It decides nothing about vending.

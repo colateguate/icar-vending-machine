@@ -1,0 +1,213 @@
+/*
+ * The service door and the form behind it.
+ *
+ * The whole `service` block lives in this one file, rows included, even though
+ * the rows are rendered by CountField. The unit of a stylesheet here is the
+ * block, not the component: CountField emits `service__row`, which says it is a
+ * part of this door rather than a thing of its own, and splitting the block
+ * across two files would mean reading both to know what a row looks like.
+ *
+ * There is no scrim behind the drawer, and that is the same decision as not
+ * trapping the focus. A dimmed page is how a modal says the rest of the screen
+ * is out of bounds; this one deliberately leaves it in bounds, so drawing the
+ * shade would be the skin contradicting the behaviour.
+ */
+
+/* The handle sticks out of the right edge of the cabinet, the way a technician's
+   keyhole does — findable, and out of a customer's way. */
+.service__handle {
+  background: linear-gradient(90deg, var(--steel-600) 0%, var(--steel-700) 100%);
+  border: 1px solid var(--steel-900);
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  border-right: none;
+  box-shadow: -3px 0 10px rgb(0 0 0 / 45%);
+  color: var(--ink-dim);
+  cursor: pointer;
+  font-size: 0.6875rem;
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.22em;
+  padding: var(--space-4) var(--space-2);
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  transition: color 120ms ease, background-color 120ms ease;
+  /* Read bottom-to-top up the side of the machine, like the lettering on a
+     service panel. */
+  writing-mode: vertical-rl;
+  z-index: 2;
+}
+
+.service__handle:hover {
+  color: var(--ink);
+}
+
+.service__drawer {
+  background: linear-gradient(180deg, var(--steel-800) 0%, var(--steel-900) 100%);
+  border-left: 2px solid var(--steel-500);
+  bottom: 0;
+  box-shadow: -18px 0 40px rgb(0 0 0 / 55%);
+  max-width: 100%;
+  overflow-y: auto;
+  padding: var(--space-5);
+  position: fixed;
+  right: 0;
+  top: 0;
+  width: 24rem;
+  z-index: 3;
+
+  /* Mounted, not toggled: the panel does not exist while the door is shut, so
+     the movement is an animation on appearance rather than a transition between
+     two states. The reduced-motion rule in index.css collapses it to nothing. */
+  animation: service-slide-in 220ms ease-out;
+}
+
+@keyframes service-slide-in {
+  from {
+    transform: translateX(100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+.service__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.service__group {
+  background: rgb(0 0 0 / 20%);
+  border: 1px solid var(--steel-700);
+  border-radius: var(--radius-md);
+  margin: 0;
+  padding: var(--space-4);
+}
+
+.service__group legend {
+  color: var(--ink-dim);
+  font-size: 0.6875rem;
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.18em;
+  padding: 0 var(--space-2);
+}
+
+.service__rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.service__row {
+  align-items: center;
+  display: grid;
+  gap: var(--space-1) var(--space-3);
+  grid-template-areas:
+    'label input'
+    'note  note';
+  grid-template-columns: minmax(0, 1fr) 5rem;
+}
+
+.service__row label {
+  color: var(--ink);
+  font-size: 0.875rem;
+  grid-area: label;
+}
+
+.service__row input {
+  background: var(--steel-900);
+  border: 1px solid var(--steel-500);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--bevel-sunken);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+  grid-area: input;
+  padding: var(--space-2);
+  text-align: right;
+  width: 100%;
+}
+
+.service__row input:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.service__note {
+  color: var(--lamp-amber);
+  font-size: 0.75rem;
+  grid-area: note;
+  margin: 0;
+}
+
+.service__actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+/*
+ * Apply is the machine's own green — the same phosphor as the display, which is
+ * the colour this panel already uses to mean "this is what the machine says".
+ */
+.service__apply {
+  background: linear-gradient(180deg, var(--led) 0%, var(--led-dim) 100%);
+  border: 1px solid var(--led-edge);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 3px 0 var(--led-edge), 0 5px 10px rgb(0 0 0 / 35%);
+  color: var(--led-bg);
+  cursor: pointer;
+  flex: 1;
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: var(--space-3);
+  transition: transform 80ms ease, filter 120ms ease;
+}
+
+.service__apply:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.service__apply:active:not(:disabled) {
+  box-shadow: 0 1px 0 var(--led-edge);
+  transform: translateY(2px);
+}
+
+.service__apply:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.6);
+  opacity: 0.55;
+}
+
+.service__close {
+  background: linear-gradient(180deg, var(--steel-600) 0%, var(--steel-700) 100%);
+  border: 1px solid var(--steel-900);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--bevel-raised);
+  color: var(--ink);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  letter-spacing: 0.1em;
+  padding: var(--space-3) var(--space-5);
+}
+
+.service__close:hover {
+  background: linear-gradient(180deg, var(--steel-500) 0%, var(--steel-600) 100%);
+}
+
+/* On a phone the drawer is the screen: a 24rem panel beside a 320px viewport
+   would be the panel and a sliver of the cabinet nobody can use. */
+@media (max-width: 30rem) {
+  .service__drawer {
+    padding: var(--space-4);
+    width: 100%;
+  }
+}

@@ -1,0 +1,114 @@
+/*
+ * The shelf behind the glass. Each slot is one row on a rail: the selector on a
+ * printed tag, the name and how many are left in the middle, the price on the
+ * right in the same face the display uses — because on a real machine the price
+ * and the amount you have put in are read against each other.
+ */
+
+.shelf__title {
+  color: var(--ink-dim);
+  font-size: 0.75rem;
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.16em;
+  margin: 0 0 var(--space-3);
+}
+
+.shelf__empty {
+  color: var(--ink-dim);
+  font-style: italic;
+  margin: 0;
+}
+
+.shelf__slots {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.slot__button {
+  align-items: center;
+  background: linear-gradient(180deg, var(--steel-700) 0%, var(--steel-800) 100%);
+  border: 1px solid var(--steel-900);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--bevel-raised);
+  color: var(--ink);
+  cursor: pointer;
+  display: grid;
+  font: inherit;
+  gap: 0 var(--space-3);
+  /*
+   * The price spans both rows so it sits centred against the pair, and the tag
+   * spans them so it reads as one label stuck to the front of the slot.
+   */
+  grid-template-areas:
+    'selector name  price'
+    'selector count price';
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: var(--space-3);
+  text-align: left;
+  transition: background-color 120ms ease, transform 80ms ease;
+  width: 100%;
+}
+
+.slot__button:hover:not(:disabled) {
+  background: linear-gradient(180deg, var(--steel-600) 0%, var(--steel-700) 100%);
+}
+
+/* Pressed: the face sinks and its top highlight goes with it. */
+.slot__button:active:not(:disabled) {
+  box-shadow: var(--bevel-sunken);
+  transform: translateY(1px);
+}
+
+.slot__button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.slot__selector {
+  background: linear-gradient(180deg, #f5d98a 0%, #e0b455 100%);
+  border-radius: var(--radius-sm);
+  color: var(--ink-inverse);
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  grid-area: selector;
+  letter-spacing: 0.08em;
+  padding: var(--space-1) var(--space-2);
+}
+
+.slot__name {
+  font-size: 1rem;
+  font-weight: 600;
+  grid-area: name;
+}
+
+.slot__price {
+  align-self: center;
+  color: var(--led);
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-variant-numeric: tabular-nums;
+  grid-area: price;
+}
+
+.slot__count {
+  color: var(--ink-dim);
+  font-size: 0.8125rem;
+  grid-area: count;
+}
+
+/*
+ * There is deliberately no "sold out" styling here, and the reason is worth
+ * writing down. A slot is disabled for two unrelated reasons — the shelf is
+ * empty, or the machine is busy answering something else — and `:disabled` is
+ * the only one of the two CSS can see. Striking the count through on that
+ * selector would put a line through "10 left" every time a request is in
+ * flight, which is the skin inventing a fact the DOM never stated. The count
+ * already says "Sold out" in words; that is the channel that knows which is
+ * which.
+ */
+

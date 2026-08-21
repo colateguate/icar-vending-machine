@@ -1,3 +1,5 @@
+import './CoinButtons.css';
+
 /**
  * The coin slot, showing what the machine says it takes.
  *

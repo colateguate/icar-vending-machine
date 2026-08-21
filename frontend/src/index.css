@@ -1,0 +1,174 @@
+/*
+ * The palette, the scale and the reset. Everything below this file styles a
+ * block; this file decides what the blocks are allowed to be made of.
+ *
+ * Plain CSS with custom properties, no build step of its own and no framework.
+ * The reasoning is ADR-0016's, applied to a second question: a utility
+ * framework earns its keep when many people style many screens and need a
+ * shared vocabulary to stop the palette drifting. There is one screen, and the
+ * shared vocabulary fits in the `:root` block below. Tailwind here would be a
+ * dependency, a config file and a build plugin bought to solve a problem this
+ * size does not have.
+ *
+ * No web font either. A downloaded typeface is a request to a third party on
+ * every cold load, and the one thing it would buy — the seven-segment glow of
+ * the display — is bought instead with the system monospace stack, wide
+ * letter-spacing and tabular figures.
+ */
+
+:root {
+  /*
+   * Steel, from the deepest recess to the lit edge of a bevel. A cabinet reads
+   * as metal because light falls off it in steps, so the ramp is what does the
+   * work and the individual values are only points on it.
+   */
+  --steel-950: #0a0c0f;
+  --steel-900: #14171c;
+  --steel-800: #1b1f26;
+  --steel-700: #252a32;
+  --steel-600: #333942;
+  --steel-500: #454c57;
+  --steel-400: #5d6673;
+
+  /* The dark a recess is made of — behind the glass, inside the coin mouth.
+     Named for the role rather than given a rung on the ramp, because being sunk
+     into the cabinet is what those two places share. A single gradient may run
+     darker still at its deepest point; that stop belongs to the one block that
+     draws it, not here. */
+  --recess: #0d1116;
+
+  --brand: #c0242e;
+  --brand-dark: #8c1a22;
+  /*
+   * The hard edge under a moulded button, and the darker one it shows while
+   * disabled. They are shades of the brand rather than colours of their own,
+   * and they are named for the same reason the ramp is: repainting the machine
+   * has to be one decision, not a hunt through three stylesheets for the two
+   * reds nobody wrote down.
+   */
+  --brand-edge: #6d1219;
+  --brand-edge-deep: #4a0d12;
+
+  /* The display: phosphor green on a screen that is off but not black. */
+  --led: #4df08a;
+  --led-dim: #2ea866;
+  --led-bg: #06120b;
+  --led-edge: #1c7a48;
+
+  /* The lamp, lit. Amber rather than red: red is what a fault looks like, and
+     "exact change only" is the machine working, not the machine broken. */
+  --lamp-amber: #ffc24b;
+  --lamp-off: #4a5058;
+
+  --coin-face: #dce1e7;
+  --coin-edge: #8a939e;
+  --coin-border: #6f7885;
+  --coin-ink: #171a1f;
+
+  --ink: #f0f2f5;
+  --ink-dim: #aab3be;
+  --ink-inverse: #171a1f;
+  /*
+   * There is deliberately no token for the plain white used on the brand band
+   * and on RETURN-COIN. Naming it would suggest a decision that can be revisited
+   * per surface, and there isn't one: if the brand ever stopped being a dark
+   * red, `--ink-on-brand: #fff` would still be white and would still fail its
+   * contrast check. What that colour depends on is the surface underneath, and
+   * a variable cannot carry that. The check does.
+   */
+
+  /* 0.25rem steps. Anything not on this ladder is a value someone eyeballed. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 1rem;
+  /* Not a rung on the ladder: "round it until the ends are semicircles",
+     which is what any number this side of absurd achieves. */
+  --radius-pill: 999px;
+
+  /* Two lights: a hard rim that separates a face from its recess, and the soft
+     drop that lifts a control off the panel it is screwed to. */
+  --bevel-raised: inset 0 1px 0 rgb(255 255 255 / 18%), inset 0 -2px 0 rgb(0 0 0 / 45%);
+  --bevel-sunken: inset 0 2px 6px rgb(0 0 0 / 65%), inset 0 -1px 0 rgb(255 255 255 / 8%);
+  --shadow-control: 0 2px 0 rgb(0 0 0 / 55%), 0 4px 10px rgb(0 0 0 / 35%);
+  --shadow-cabinet: 0 24px 60px rgb(0 0 0 / 55%);
+
+  --font-body:
+    system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-display:
+    ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  /* The room the machine stands in, lit from above. */
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, #2b3038 0%, #0e1013 60%, var(--steel-950) 100%);
+  color: var(--ink);
+  font-family: var(--font-body);
+  line-height: 1.4;
+  min-height: 100vh;
+  padding: var(--space-5) var(--space-4);
+}
+
+/*
+ * Every animation on this panel is decoration: the drawer slides, the lamp
+ * glows, buttons sink when pressed. None of it carries information, so all of
+ * it can be switched off wholesale for anyone who asked the system not to move
+ * things. The `!important` is the point — this has to beat whatever a block
+ * declared, and there is nothing here worth an exception.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-delay: -1ms !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+/*
+ * Focus is drawn once, here, for every control in the panel. A keyboard has to
+ * be able to see where it is on a cabinet made of dark metal, and the ring is
+ * amber because nothing else on the machine is — it cannot be confused with the
+ * lamp being lit or a button being disabled.
+ */
+:focus-visible {
+  outline: 3px solid var(--lamp-amber);
+  outline-offset: 2px;
+}
+
+/*
+ * House rule, learned the hard way while writing this skin: nothing on this
+ * panel uses `text-transform`. Every small-caps label you see below is
+ * `font-variant-caps: all-small-caps` instead.
+ *
+ * They are not equivalent. `text-transform` changes the text, and Chrome puts
+ * the *transformed* text into the accessibility tree — so styling the heading
+ * of the shelf renamed the region from "Products" to "PRODUCTS", and the
+ * technician's door from "Service" to "SERVICE". Screen readers treat a
+ * shouted word differently from a written one, some spelling it out letter by
+ * letter. `font-variant-caps` swaps glyphs and leaves the characters alone, so
+ * the name stays what the component wrote.
+ *
+ * The suite could not have caught this: jsdom runs with `css: false`, so a test
+ * asking for the button named "Service" finds it whatever a stylesheet does to
+ * it. It took the accessibility tree of a real browser, before and after.
+ */

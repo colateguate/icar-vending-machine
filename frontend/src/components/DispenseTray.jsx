@@ -1,3 +1,5 @@
+import './DispenseTray.css';
+
 /**
  * The cajetín at the bottom: whatever physically left the machine on the last
  * action, and nothing else. Buying and asking for the money back both put

@@ -1,3 +1,5 @@
+import './MachineDisplay.css';
+
 /**
  * The machine's one screen: the amount taken so far, or the current message
  * when there is one. Two displays side by side would be a dashboard pretending

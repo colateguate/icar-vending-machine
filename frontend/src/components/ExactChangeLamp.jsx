@@ -1,3 +1,5 @@
+import './ExactChangeLamp.css';
+
 /**
  * The lamp a physical machine lights when it can no longer give change for
  * everything it sells — the domain's most interesting edge case, wired to a
