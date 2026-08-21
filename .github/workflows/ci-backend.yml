@@ -1,8 +1,28 @@
-name: CI
+name: CI (backend)
 
+# The pipeline is two workflows, one per half of the repo, and it is split that
+# way because GitHub applies `paths` filters per workflow rather than per job:
+# a single file cannot run the PHP jobs on one set of changes and the npm jobs
+# on another. The frontend half lives in ci-frontend.yml.
+#
+# Both halves filter with `paths-ignore` naming the *other* half, never with
+# `paths` naming their own. The difference is which way each fails. `paths-ignore`
+# runs unless the change is provably somewhere else, so a file added at the root
+# tomorrow still triggers this pipeline. `paths` would run only what is listed,
+# so the same new file would silently skip every gate — and a gate that stopped
+# running without saying so is worse than one that never existed, because the
+# green tick still appears.
+#
+# The price is stated rather than hidden: a change under docs/ or .claude/ runs
+# both pipelines even though it can break neither. That is the same bill this
+# file already paid before the split, and it is the cheap side of the trade.
 on:
   push:
+    paths-ignore:
+      - 'frontend/**'
   pull_request:
+    paths-ignore:
+      - 'frontend/**'
   # A pipeline triggered only by pushes answers "did this change break
   # anything". The audit job below also has to answer "did the world break
   # us", and the world does not push commits: an advisory is published
