@@ -27,7 +27,9 @@ final class MachineStateResponse
      *     changeReserve: array{coins: list<array{denomination: string, count: int}>, amount: string},
      *     insertedCoins: array{coins: list<array{denomination: string, count: int}>, amount: string},
      *     acceptedCoins: list<array{denomination: string, dispensableAsChange: bool}>,
+     *     supportedCoins: list<array{denomination: string, dispensableAsChange: bool, enabled: bool}>,
      *     exactChangeOnly: bool,
+     *     outOfService: bool,
      * }
      */
     public static function from(MachineStateView $view): array
@@ -50,12 +52,28 @@ final class MachineStateResponse
             ];
         }
 
+        // Every coin the acceptor can read, and whether this machine is taking
+        // it. The overlap with acceptedCoins is deliberate: that one answers
+        // the customer's question — what may I put in — and is the shape
+        // clients already read, while this one answers the technician's, and
+        // is the only list that can show a coin the machine is refusing.
+        $supportedCoins = [];
+        foreach ($view->supportedCoins as $coin) {
+            $supportedCoins[] = [
+                'denomination' => $coin->amount()->toDecimalString(),
+                'dispensableAsChange' => $coin->isDispensableAsChange(),
+                'enabled' => \in_array($coin, $view->acceptedCoins, true),
+            ];
+        }
+
         return [
             'products' => $products,
             'changeReserve' => CoinsResponse::from($view->changeReserve),
             'insertedCoins' => CoinsResponse::from($view->insertedCoins),
             'acceptedCoins' => $acceptedCoins,
+            'supportedCoins' => $supportedCoins,
             'exactChangeOnly' => $view->exactChangeOnly,
+            'outOfService' => $view->outOfService,
         ];
     }
 }

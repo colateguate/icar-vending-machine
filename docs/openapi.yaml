@@ -134,7 +134,15 @@ paths:
                         - { denomination: "0.10", dispensableAsChange: true }
                         - { denomination: "0.25", dispensableAsChange: true }
                         - { denomination: "1.00", dispensableAsChange: false }
+                      supportedCoins:
+                        - { denomination: "0.05", dispensableAsChange: true, enabled: true }
+                        - { denomination: "0.10", dispensableAsChange: true, enabled: true }
+                        - { denomination: "0.25", dispensableAsChange: true, enabled: true }
+                        - { denomination: "0.50", dispensableAsChange: true, enabled: false }
+                        - { denomination: "1.00", dispensableAsChange: false, enabled: true }
+                        - { denomination: "2.00", dispensableAsChange: false, enabled: false }
                       exactChangeOnly: false
+                      outOfService: false
         '503':
           $ref: '#/components/responses/NotProvisioned'
 
@@ -191,7 +199,15 @@ paths:
                         - { denomination: "0.10", dispensableAsChange: true }
                         - { denomination: "0.25", dispensableAsChange: true }
                         - { denomination: "1.00", dispensableAsChange: false }
+                      supportedCoins:
+                        - { denomination: "0.05", dispensableAsChange: true, enabled: true }
+                        - { denomination: "0.10", dispensableAsChange: true, enabled: true }
+                        - { denomination: "0.25", dispensableAsChange: true, enabled: true }
+                        - { denomination: "0.50", dispensableAsChange: true, enabled: false }
+                        - { denomination: "1.00", dispensableAsChange: false, enabled: true }
+                        - { denomination: "2.00", dispensableAsChange: false, enabled: false }
                       exactChangeOnly: false
+                      outOfService: false
         '400':
           $ref: '#/components/responses/MalformedJson'
         '409':
@@ -295,7 +311,15 @@ paths:
                         - { denomination: "0.10", dispensableAsChange: true }
                         - { denomination: "0.25", dispensableAsChange: true }
                         - { denomination: "1.00", dispensableAsChange: false }
+                      supportedCoins:
+                        - { denomination: "0.05", dispensableAsChange: true, enabled: true }
+                        - { denomination: "0.10", dispensableAsChange: true, enabled: true }
+                        - { denomination: "0.25", dispensableAsChange: true, enabled: true }
+                        - { denomination: "0.50", dispensableAsChange: true, enabled: false }
+                        - { denomination: "1.00", dispensableAsChange: false, enabled: true }
+                        - { denomination: "2.00", dispensableAsChange: false, enabled: false }
                       exactChangeOnly: false
+                      outOfService: false
         '409':
           description: A concurrent change was refused by optimistic locking.
           content:
@@ -374,7 +398,15 @@ paths:
                         - { denomination: "0.10", dispensableAsChange: true }
                         - { denomination: "0.25", dispensableAsChange: true }
                         - { denomination: "1.00", dispensableAsChange: false }
+                      supportedCoins:
+                        - { denomination: "0.05", dispensableAsChange: true, enabled: true }
+                        - { denomination: "0.10", dispensableAsChange: true, enabled: true }
+                        - { denomination: "0.25", dispensableAsChange: true, enabled: true }
+                        - { denomination: "0.50", dispensableAsChange: true, enabled: false }
+                        - { denomination: "1.00", dispensableAsChange: false, enabled: true }
+                        - { denomination: "2.00", dispensableAsChange: false, enabled: false }
                       exactChangeOnly: false
+                      outOfService: false
         '400':
           $ref: '#/components/responses/MalformedJson'
         '404':
@@ -511,11 +543,34 @@ paths:
                       count:
                         type: integer
                         minimum: 0
+                acceptedCoins:
+                  type: array
+                  description: |
+                    Which denominations the machine takes from now on. A set,
+                    so it travels as amounts rather than as a flag on the till
+                    rows: that list says how many coins are in there, this one
+                    says which the slot will read, and a denomination can be in
+                    either without the other. Money left inside when its
+                    denomination is switched off appears as exactly that — a
+                    row in `changeReserve` that is not in this list.
+
+                    Omit the field and the visit leaves the acceptor alone.
+                    Send an empty list and the machine takes nothing at all,
+                    which is a machine out of service — a state a technician is
+                    allowed to leave behind.
+
+                    Naming a denomination twice is read rather than refused: a
+                    set holds it once however many times you say it. A repeated
+                    `changeReserve` row is refused instead, because there the
+                    duplicate is ambiguous.
+                  items:
+                    $ref: '#/components/schemas/Denomination'
             example:
               products:
                 - { selector: TEA, name: Iced Tea, price: "0.80", count: 4 }
               changeReserve:
                 - { denomination: "0.25", count: 2 }
+              acceptedCoins: ["0.25", "0.50", "1.00"]
       responses:
         '200':
           description: The machine now stocks and holds what was sent.
@@ -542,7 +597,15 @@ paths:
                         - { denomination: "0.10", dispensableAsChange: true }
                         - { denomination: "0.25", dispensableAsChange: true }
                         - { denomination: "1.00", dispensableAsChange: false }
+                      supportedCoins:
+                        - { denomination: "0.05", dispensableAsChange: true, enabled: true }
+                        - { denomination: "0.10", dispensableAsChange: true, enabled: true }
+                        - { denomination: "0.25", dispensableAsChange: true, enabled: true }
+                        - { denomination: "0.50", dispensableAsChange: true, enabled: false }
+                        - { denomination: "1.00", dispensableAsChange: false, enabled: true }
+                        - { denomination: "2.00", dispensableAsChange: false, enabled: false }
                       exactChangeOnly: false
+                      outOfService: false
         '400':
           $ref: '#/components/responses/MalformedJson'
         '409':
@@ -612,12 +675,16 @@ components:
 
     Denomination:
       type: string
-      enum: ["0.05", "0.10", "0.25", "1.00"]
+      enum: ["0.05", "0.10", "0.25", "0.50", "1.00", "2.00"]
       description: |
-        The four coins the machine accepts. Only three are ever given back as
-        change — the 1.00 coin goes in but never comes out of the change
-        chute, which is an interpretation of the brief recorded in the
-        assumptions document.
+        Every coin the acceptor can read. Which of them a given machine takes
+        is a different question, answered by `acceptedCoins` and settable by a
+        service visit — a machine installed from the brief takes four of these
+        six.
+
+        The big pieces go in and never come out of the change chute: that is
+        the brief's rule for the 1.00, read one denomination further up for the
+        2.00, and it is recorded in the assumptions document.
 
     Selector:
       type: string
@@ -653,6 +720,27 @@ components:
             Loading a coin that is not dispensable into the reserve therefore
             does nothing for change-making, and a service screen worth its salt
             says so before someone does it.
+
+    SupportedCoin:
+      type: object
+      additionalProperties: false
+      required: [denomination, dispensableAsChange, enabled]
+      description: |
+        A denomination the acceptor can read, and what this machine does with
+        it.
+      properties:
+        denomination:
+          $ref: '#/components/schemas/Denomination'
+        dispensableAsChange:
+          type: boolean
+          description: Whether this coin can come back out of the change chute.
+        enabled:
+          type: boolean
+          description: |
+            Whether this machine is currently taking the coin. Switched by a
+            service visit; a coin that is off is refused at the slot with
+            `coin_not_accepted`, and any of it left in the till stays there
+            without ever being given back as change.
 
     CoinBag:
       type: object
@@ -690,7 +778,7 @@ components:
     MachineState:
       type: object
       additionalProperties: false
-      required: [products, changeReserve, insertedCoins, acceptedCoins, exactChangeOnly]
+      required: [products, changeReserve, insertedCoins, acceptedCoins, supportedCoins, exactChangeOnly, outOfService]
       properties:
         products:
           type: array
@@ -715,12 +803,35 @@ components:
             will eventually disagree about.
           items:
             $ref: '#/components/schemas/AcceptedCoin'
+        supportedCoins:
+          type: array
+          description: |
+            Every denomination the acceptor can read, and whether this machine
+            is taking it. `acceptedCoins` is exactly the enabled subset — the
+            two are views of one fact and never disagree.
+
+            Both are published because they answer different questions. A
+            customer asks what may go in the slot; a technician asks what the
+            hardware could take and what is currently switched off, and only
+            this list can show a coin the machine is refusing.
+          items:
+            $ref: '#/components/schemas/SupportedCoin'
         exactChangeOnly:
           type: boolean
           description: |
             True when the machine cannot currently give change for every
             product it sells. A physical machine lights a lamp; this is the
             lamp.
+        outOfService:
+          type: boolean
+          description: |
+            True when the machine takes no coin at all. Nobody can build up an
+            escrow, so nothing can be bought: it is what a technician leaves
+            behind by switching every denomination off.
+
+            Derivable from an empty `acceptedCoins`, and published anyway for
+            the same reason `exactChangeOnly` is — a rule a client has to
+            reimplement is a rule two systems will eventually disagree about.
 
     MachineStateResponse:
       type: object
