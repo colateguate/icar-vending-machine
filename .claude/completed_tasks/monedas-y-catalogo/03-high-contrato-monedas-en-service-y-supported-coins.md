@@ -1,5 +1,14 @@
 # Contrato: service gestiona monedas, supportedCoins en el estado, errores nuevos
 
+> **Dos criterios de este ticket caducaron antes de implementarlo**, porque el
+> ticket 01 cambio el modelo (decision del usuario: "fuera de servicio").
+> - "Cargar count>0 de una deshabilitada -> 422": ya NO aplica; las monedas
+>   varadas son declarables a proposito, y refusarlas haria la verdad indecible.
+> - "Insertar una deshabilitada -> 422 con code propio": entregado en el 01
+>   (`coin_not_accepted`); aqui solo se verifica por HTTP y por CLI.
+> La forma del payload tambien difiere de la propuesta del spec: campo propio
+> `acceptedCoins` en vez de un flag en la fila del till (razon en el commit).
+
 ## Contexto
 
 Con dominio (01) y persistencia (02) listos, la API tiene que exponer la gestión. Decisiones K3/K6 del spec: `acceptedCoins` congela su significado (solo habilitadas — los botones del panel no cambian, `frontend/src/components/CoinButtons.jsx:15-34`); nace `supportedCoins` con las 6 y su flag `enabled` para el formulario; cargar en till una deshabilitada es 422. Hoy el estado publica el enum crudo (`GetMachineStateHandler.php:31`), el request de service no conoce flags (`ServiceMachineRequest.php:87`, `changeReserveIn`) y el enum del contrato OpenAPI lista 4 valores (`docs/openapi.yaml:607`).
