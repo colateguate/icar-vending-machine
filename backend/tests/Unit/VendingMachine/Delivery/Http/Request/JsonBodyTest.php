@@ -151,7 +151,7 @@ final class JsonBodyTest extends TestCase
 
     /**
      * The index is the whole value of the message: a client told only "invalid
-     * payload" has to guess which of six coins it got wrong.
+     * payload" is left guessing which entry of the list it got wrong.
      */
     public function test_an_element_that_is_not_a_string_names_its_index(): void
     {

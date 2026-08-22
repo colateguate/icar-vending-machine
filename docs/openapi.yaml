@@ -679,8 +679,8 @@ components:
       description: |
         Every coin the acceptor can read. Which of them a given machine takes
         is a different question, answered by `acceptedCoins` and settable by a
-        service visit — a machine installed from the brief takes four of these
-        six.
+        service visit — a machine installed from the brief takes the ones the
+        brief names and leaves the rest switched off.
 
         The big pieces go in and never come out of the change chute: that is
         the brief's rule for the 1.00, read one denomination further up for the
