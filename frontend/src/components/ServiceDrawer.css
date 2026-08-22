@@ -140,6 +140,96 @@
 }
 
 /*
+ * A shelf row is five things about one product — what the machine calls it, its
+ * name, its price, how many are left, and the way to retire it — so it lays its
+ * own areas instead of borrowing the label/input pair above.
+ *
+ * It wraps onto three lines rather than laying five columns across, and that is
+ * measured rather than preferred: five columns forced the shelf fieldset to
+ * 366px inside a 367px drawer and put a horizontal scrollbar under the whole
+ * form. This drawer is a strip down the side of a cabinet, so the width it has
+ * is the width it gets.
+ */
+.service__row--product {
+  grid-template-areas:
+    'selector remove'
+    'name     name'
+    'price    units';
+  /* The second column is the same 5rem the till rows give a count, so the two
+     fieldsets line their numbers up. Sized rather than `auto`, which handed the
+     units box 229px and clipped a four-character price down to "1.0". */
+  grid-template-columns: minmax(0, 1fr) 5rem;
+}
+
+/* Each field is a cell of its own, which is what keeps every label attached to
+   the input it names rather than to one shared grid area. */
+.service__cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-inline-size: 0;
+}
+
+.service__cell--name {
+  grid-area: name;
+}
+
+.service__cell--price {
+  grid-area: price;
+}
+
+.service__cell--units {
+  grid-area: units;
+}
+
+/* The machine's own word for the product: stamped rather than typed, because it
+   is the identity of the row and the one part a visit cannot edit. */
+.service__selector {
+  background: var(--steel-700);
+  border-radius: var(--radius-sm);
+  color: var(--ink-dim);
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  grid-area: selector;
+  justify-self: start;
+  letter-spacing: 0.04em;
+  margin: 0;
+  padding: var(--space-1) var(--space-2);
+}
+
+.service__row .service__cell label {
+  color: var(--ink-dim);
+  font-size: 0.6875rem;
+}
+
+.service__row .service__field--price,
+.service__row .service__field--name {
+  text-align: left;
+}
+
+.service__remove {
+  align-self: center;
+  background: transparent;
+  border: 1px solid var(--steel-500);
+  border-radius: var(--radius-sm);
+  color: var(--ink-dim);
+  cursor: pointer;
+  font-size: 0.75rem;
+  grid-area: remove;
+  padding: var(--space-2);
+}
+
+.service__remove:hover:not(:disabled) {
+  border-color: var(--brand);
+  color: var(--ink);
+}
+
+.service__remove:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/*
  * A till row asks two things about one denomination — does the slot take it, and
  * how many are in there — so it is one row with a switch in front of the count
  * rather than two lists to read side by side. The shelf rows keep the two-column

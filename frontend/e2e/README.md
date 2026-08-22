@@ -1,7 +1,7 @@
 # End-to-end tests
 
 The fifth test level, and the only one that drives a real browser against the
-running stack. Six specs, about two seconds, and every one of them was watched
+running stack. Seven specs, about two seconds, and every one of them was watched
 failing before it was kept.
 
 ```bash
@@ -56,14 +56,22 @@ caught before it could.
   accessible name comes from the text content, so a sentinel built on
   `getByRole` would be exactly as blind as jsdom. That is Chromium-only, which
   is the whole browser list here.
-- A till switch is named after the coin it governs, and the coin is in a
-  `visually-hidden` span so the figure is not printed twice on every row of the
-  technician's form. That makes the name a property of the stylesheet: turn the
-  class into `display: none` — the reflex fix for "hide this" — and Chrome drops
-  the text from its tree, leaving six checkboxes all called "accepted". Measured
-  by doing it: the spec goes red, and all 146 Vitest tests stay green, because
-  every one of them queries "0.50 — accepted" in a jsdom that never applied the
-  rule.
+- Every control in the service drawer is named out of a `visually-hidden` span:
+  a till switch after its coin, a shelf field after its product, so the drawer
+  does not print the same figure three and four times down a row. That makes all
+  of those names a property of the stylesheet — turn the class into
+  `display: none`, the reflex fix for "hide this", and Chrome drops the text from
+  its tree, leaving six checkboxes called "accepted" and three fields per product
+  called "name", "price" and "units". Measured by doing it: the spec goes red and
+  the whole Vitest suite stays green, because every one of its queries runs in a
+  jsdom that never applied the rule.
+- No field in the drawer may need more room than it has, and the drawer may not
+  scroll sideways. A price of "0.65" once arrived in a box 44px wide that needed
+  51 and read "0.6" — the value correct, the box not, which `toHaveValue` cannot
+  see and jsdom has no layout to answer. It runs at a phone's width, and that is
+  load-bearing: written against a desktop viewport the same test passed with the
+  broken stylesheet in place, because the bug needed the 17px a vertical
+  scrollbar takes and headless Chromium's scrollbars occupy no layout space.
 
 **`serving.spec.js` — the three things `docker/nginx.conf` decides and nothing
 else in the repository watches.** Each is one character away from breaking the
