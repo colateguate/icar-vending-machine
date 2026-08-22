@@ -45,9 +45,11 @@ const showing =
  * says "Out of order" about a request it understood perfectly well.
  */
 const MESSAGES = {
-  // Not reachable: the coin buttons and the till rows are both rendered from
-  // `acceptedCoins`, so every denomination this panel sends came from the
-  // machine's own answer — and so did every price.
+  // Not reachable, and it stays that way now the till rows come from
+  // `supportedCoins` instead: both lists are the machine's own answer about its
+  // own acceptor, so every denomination this panel names — at the slot, in the
+  // till, or in the set it asks the machine to take — came from the machine.
+  // And so did every price.
   unsupported_coin: () => 'Coin rejected',
   // Reachable, and for the same reason `unknown_product` is: the buttons show
   // the coins the machine took when the panel loaded, and a service visit can

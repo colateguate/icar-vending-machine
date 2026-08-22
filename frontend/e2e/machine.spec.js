@@ -109,3 +109,27 @@ test('the controls keep the names a screen reader reads out', async ({ page }) =
    */
   expect(named).toContainEqual({ role: 'button', name: 'RETURN-COIN' });
 });
+
+/**
+ * The one name on this panel that is assembled rather than written: a till
+ * switch is called after the coin it governs, and the coin is in a
+ * `visually-hidden` span so the figure is not printed twice on every row.
+ *
+ * Which makes the name a property of the *stylesheet*. Turn that class into
+ * `display: none` — the reflex fix for "hide this" — and Chrome drops the text
+ * from the accessibility tree, leaving six checkboxes all called "accepted"
+ * while every Vitest query for "0.50 — accepted" stays green: jsdom runs with
+ * `css: false` and never applies the rule that broke it.
+ */
+test('a till switch is named after its coin, out of text that is never on screen', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Service' }).click();
+  await expect(page.getByRole('dialog', { name: 'Service' })).toBeVisible();
+
+  const named = await namedNodes(page);
+
+  expect(named).toContainEqual({ role: 'checkbox', name: '0.50 — accepted' });
+  expect(named).toContainEqual({ role: 'checkbox', name: '1.00 — accepted' });
+});

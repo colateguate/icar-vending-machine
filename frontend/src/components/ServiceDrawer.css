@@ -139,6 +139,37 @@
   opacity: 0.5;
 }
 
+/*
+ * A till row asks two things about one denomination — does the slot take it, and
+ * how many are in there — so it is one row with a switch in front of the count
+ * rather than two lists to read side by side. The shelf rows keep the two-column
+ * grid: an empty column there would indent every product label past a switch
+ * that does not exist.
+ */
+.service__row--controlled {
+  grid-template-areas:
+    'switch switch-label label input'
+    'note   note         note  note';
+  grid-template-columns: auto auto minmax(0, 1fr) 5rem;
+}
+
+/* Both selectors are class-on-class so they outrank `.service__row input` and
+   `.service__row label`, which describe the number field and its name. */
+.service__row .service__switch {
+  accent-color: var(--brand);
+  block-size: 1.125rem;
+  box-shadow: none;
+  grid-area: switch;
+  inline-size: 1.125rem;
+  padding: 0;
+  width: auto;
+}
+
+.service__row .service__switch-label {
+  color: var(--ink-dim);
+  grid-area: switch-label;
+}
+
 .service__note {
   color: var(--lamp-amber);
   font-size: 0.75rem;

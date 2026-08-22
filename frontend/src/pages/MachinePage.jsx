@@ -56,12 +56,20 @@ export default function MachinePage() {
         <DispenseTray contents={tray} />
       </div>
 
+      {/*
+        The two coin lists go to two different halves of the screen, and this is
+        the only place that could cross them. The buttons show what the machine
+        takes — offering a customer a coin the slot would refuse is a lie the
+        panel must not tell. The drawer shows everything the acceptor can read,
+        because a form seeded from what the machine takes could never switch a
+        denomination back on.
+      */}
       <ServiceDrawer
-        acceptedCoins={machine?.acceptedCoins ?? []}
         changeReserve={machine?.changeReserve ?? { coins: [], amount: '0.00' }}
         disabled={locked}
         onService={service}
         products={machine?.products ?? []}
+        supportedCoins={machine?.supportedCoins ?? []}
       />
     </main>
   );
