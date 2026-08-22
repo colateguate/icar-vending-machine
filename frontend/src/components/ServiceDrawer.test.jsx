@@ -14,30 +14,39 @@ const products = [
   { selector: 'JUICE', name: 'Orange juice', price: '1.00', count: 0 },
 ];
 
-const acceptedCoins = [
-  { denomination: '0.05', dispensableAsChange: true },
-  { denomination: '0.10', dispensableAsChange: true },
-  { denomination: '0.25', dispensableAsChange: true },
-  { denomination: '1.00', dispensableAsChange: false },
+/**
+ * Every coin the acceptor can read, which is what the technician's form is
+ * about: the four this machine is taking today, and the two it is not. The
+ * customer's buttons are the other list and are not this component's business.
+ */
+const supportedCoins = [
+  { denomination: '0.05', dispensableAsChange: true, enabled: true },
+  { denomination: '0.10', dispensableAsChange: true, enabled: true },
+  { denomination: '0.25', dispensableAsChange: true, enabled: true },
+  { denomination: '0.50', dispensableAsChange: true, enabled: false },
+  { denomination: '1.00', dispensableAsChange: false, enabled: true },
+  { denomination: '2.00', dispensableAsChange: false, enabled: false },
 ];
 
-// The till holds two denominations. CoinBag omits the ones it has none of,
-// which is the shape the drawer has to cope with rather than a convenience.
+// The till holds three denominations, and one of them is money the machine has
+// stopped taking. CoinBag omits the ones it has none of, which is the shape the
+// drawer has to cope with rather than a convenience.
 const changeReserve = {
   coins: [
     { denomination: '0.05', count: 8 },
     { denomination: '0.25', count: 2 },
+    { denomination: '0.50', count: 4 },
   ],
-  amount: '0.90',
+  amount: '2.90',
 };
 
 const drawer = (props = {}) =>
   render(
     <ServiceDrawer
-      acceptedCoins={acceptedCoins}
       changeReserve={changeReserve}
       onService={() => {}}
       products={products}
+      supportedCoins={supportedCoins}
       {...props}
     />,
   );
@@ -153,17 +162,31 @@ describe('ServiceDrawer', () => {
      * The denomination the till ran out of is the whole reason to open this
      * drawer — it is the one that lit the EXACT CHANGE ONLY lamp. A form that
      * rendered only what `changeReserve` returned could never refill it, because
-     * a coin bag omits the denominations it holds none of.
+     * a coin bag omits the denominations it holds none of. And a form seeded
+     * from what the machine *takes* could never switch anything back on, which
+     * is why the rows come from what the acceptor can *read*.
      */
-    it('offers every coin the machine takes, including the ones the till has none of', async () => {
+    it('offers a count for every coin the acceptor reads, taken today or not', async () => {
       const user = userEvent.setup();
       drawer();
       await open(user);
 
       expect(screen.getByRole('spinbutton', { name: /^0\.05/ })).toHaveValue(8);
-      expect(screen.getByRole('spinbutton', { name: /^0\.25/ })).toHaveValue(2);
       expect(screen.getByRole('spinbutton', { name: /^0\.10/ })).toHaveValue(0);
+      expect(screen.getByRole('spinbutton', { name: /^0\.25/ })).toHaveValue(2);
+      expect(screen.getByRole('spinbutton', { name: /^0\.50/ })).toHaveValue(4);
       expect(screen.getByRole('spinbutton', { name: /^1\.00/ })).toHaveValue(0);
+      expect(screen.getByRole('spinbutton', { name: /^2\.00/ })).toHaveValue(0);
+    });
+
+    it('shows, per denomination, whether the machine is taking it', async () => {
+      const user = userEvent.setup();
+      drawer();
+      await open(user);
+
+      expect(screen.getByRole('checkbox', { name: '0.25 — accepted' })).toBeChecked();
+      expect(screen.getByRole('checkbox', { name: '0.50 — accepted' })).not.toBeChecked();
+      expect(screen.getAllByRole('checkbox')).toHaveLength(6);
     });
 
     /**
@@ -180,6 +203,22 @@ describe('ServiceDrawer', () => {
         /never given back as change/i,
       );
       expect(screen.getByRole('spinbutton', { name: /^0\.25/ })).toHaveAccessibleDescription('');
+    });
+
+    /**
+     * The 0.50 in this till is money the machine holds and will not hand back,
+     * because it has stopped taking that coin. Someone counting the drawer needs
+     * to be told that before they wonder why the amount does not add up to
+     * change it can pay.
+     */
+    it('warns that coins of a denomination it has stopped taking are stranded', async () => {
+      const user = userEvent.setup();
+      drawer();
+      await open(user);
+
+      expect(screen.getByRole('spinbutton', { name: /^0\.50/ })).toHaveAccessibleDescription(
+        /not taken at the slot/i,
+      );
     });
   });
 
@@ -243,16 +282,20 @@ describe('ServiceDrawer', () => {
         { denomination: '0.05', count: 8 },
         { denomination: '0.10', count: 0 },
         { denomination: '0.25', count: 2 },
+        { denomination: '0.50', count: 4 },
         { denomination: '1.00', count: 0 },
+        { denomination: '2.00', count: 0 },
       ]);
     });
 
     /**
-     * `dispensableAsChange` arrives on every coin and must not leave on any: the
-     * request body declares additionalProperties false, so a stray field is a
-     * 400 rather than something the API politely ignores.
+     * `dispensableAsChange` and the acceptor flag arrive on every coin and must
+     * leave on none: the request body declares additionalProperties false, so a stray
+     * field is a refusal rather than something the API politely ignores. Which
+     * coins the machine takes travels in its own list, not as a flag on a till
+     * row — a denomination can be in either without the other.
      */
-    it('does not send back the flag it was told about', async () => {
+    it('does not send back the flags it was told about', async () => {
       const onService = vi.fn();
       const user = userEvent.setup();
       drawer({ onService });
@@ -263,8 +306,94 @@ describe('ServiceDrawer', () => {
       const [, sentReserve] = onService.mock.calls[0];
 
       for (const coin of sentReserve) {
-        expect(coin).not.toHaveProperty('dispensableAsChange');
+        expect(Object.keys(coin)).toEqual(['denomination', 'count']);
       }
+    });
+
+    it('states the acceptor as the denominations left switched on', async () => {
+      const onService = vi.fn();
+      const user = userEvent.setup();
+      drawer({ onService });
+      await open(user);
+
+      await user.click(screen.getByRole('button', { name: 'Apply' }));
+
+      const [, , sentAcceptor] = onService.mock.calls[0];
+
+      expect(sentAcceptor).toEqual(['0.05', '0.10', '0.25', '1.00']);
+    });
+
+    it('takes a denomination the machine was refusing, once its switch is on', async () => {
+      const onService = vi.fn();
+      const user = userEvent.setup();
+      drawer({ onService });
+      await open(user);
+
+      await user.click(screen.getByRole('checkbox', { name: '0.50 — accepted' }));
+      await user.click(screen.getByRole('button', { name: 'Apply' }));
+
+      const [, , sentAcceptor] = onService.mock.calls[0];
+
+      expect(sentAcceptor).toEqual(['0.05', '0.10', '0.25', '0.50', '1.00']);
+    });
+
+    /**
+     * The state the whole feature exists to make reachable, and the one place
+     * the panel must not be clever: every switch off is an empty list, which the
+     * API reads as a machine out of service. Sending nothing instead would mean
+     * "leave the acceptor as it was" — the opposite instruction.
+     */
+    it('asks for a machine out of service when every switch is off', async () => {
+      const onService = vi.fn();
+      const user = userEvent.setup();
+      drawer({ onService });
+      await open(user);
+
+      for (const denomination of ['0.05', '0.10', '0.25', '1.00']) {
+        await user.click(screen.getByRole('checkbox', { name: `${denomination} — accepted` }));
+      }
+      await user.click(screen.getByRole('button', { name: 'Apply' }));
+
+      const [, , sentAcceptor] = onService.mock.calls[0];
+
+      expect(sentAcceptor).toEqual([]);
+    });
+
+    /**
+     * The money one. A service visit states the till in absolutes, so a form
+     * that zeroed the count of a denomination it just switched off would write
+     * off coins that are physically still inside the machine. Switching the
+     * slot shut and emptying the till are two instructions, and this form only
+     * gives the one it was asked for.
+     */
+    it('keeps the coins of a denomination it switches off', async () => {
+      const onService = vi.fn();
+      const user = userEvent.setup();
+      drawer({ onService });
+      await open(user);
+
+      await user.click(screen.getByRole('checkbox', { name: '0.05 — accepted' }));
+      await user.click(screen.getByRole('button', { name: 'Apply' }));
+
+      const [, sentReserve, sentAcceptor] = onService.mock.calls[0];
+
+      expect(sentReserve).toContainEqual({ denomination: '0.05', count: 8 });
+      expect(sentAcceptor).not.toContain('0.05');
+    });
+
+    it('can still empty the till of a denomination it does not take', async () => {
+      const onService = vi.fn();
+      const user = userEvent.setup();
+      drawer({ onService });
+      await open(user);
+
+      await user.clear(screen.getByRole('spinbutton', { name: /^0\.50/ }));
+      await user.type(screen.getByRole('spinbutton', { name: /^0\.50/ }), '0');
+      await user.click(screen.getByRole('button', { name: 'Apply' }));
+
+      const [, sentReserve] = onService.mock.calls[0];
+
+      expect(sentReserve).toContainEqual({ denomination: '0.50', count: 0 });
     });
   });
 
@@ -280,6 +409,7 @@ describe('ServiceDrawer', () => {
       expect(onService).not.toHaveBeenCalled();
       expect(screen.getByRole('button', { name: 'Apply' })).toBeDisabled();
       expect(screen.getByRole('spinbutton', { name: /WATER/ })).toBeDisabled();
+      expect(screen.getByRole('checkbox', { name: '0.25 — accepted' })).toBeDisabled();
     });
   });
 });

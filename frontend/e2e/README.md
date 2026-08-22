@@ -1,7 +1,7 @@
 # End-to-end tests
 
 The fifth test level, and the only one that drives a real browser against the
-running stack. Five specs, about two seconds, and every one of them was watched
+running stack. Six specs, about two seconds, and every one of them was watched
 failing before it was kept.
 
 ```bash
@@ -10,7 +10,7 @@ make front-e2e     # or, from frontend/: npx playwright test
 ```
 
 `E2E_BASE_URL` points them somewhere else. There is no `webServer` in
-`playwright.config.js` on purpose: two of these specs are questions about the
+`playwright.config.js` on purpose: three of these specs are questions about the
 nginx in the panel's image, and a Playwright-started dev server would be a
 different program answering them.
 
@@ -38,8 +38,9 @@ So, concretely:
 
 ## What each spec is watching, and why it would go unnoticed otherwise
 
-**`machine.spec.js` — the stylesheet as a behaviour change.** Both of these
-happened in ticket 17c and both were found by hand.
+**`machine.spec.js` — the stylesheet as a behaviour change.** The first two
+happened in ticket 17c and both were found by hand; the third is the same class
+caught before it could.
 
 - The sheen over the glass is drawn across the whole window with the product
   buttons underneath it, and `pointer-events: none` is the only rule keeping it
@@ -55,6 +56,14 @@ happened in ticket 17c and both were found by hand.
   accessible name comes from the text content, so a sentinel built on
   `getByRole` would be exactly as blind as jsdom. That is Chromium-only, which
   is the whole browser list here.
+- A till switch is named after the coin it governs, and the coin is in a
+  `visually-hidden` span so the figure is not printed twice on every row of the
+  technician's form. That makes the name a property of the stylesheet: turn the
+  class into `display: none` — the reflex fix for "hide this" — and Chrome drops
+  the text from its tree, leaving six checkboxes all called "accepted". Measured
+  by doing it: the spec goes red, and all 146 Vitest tests stay green, because
+  every one of them queries "0.50 — accepted" in a jsdom that never applied the
+  rule.
 
 **`serving.spec.js` — the three things `docker/nginx.conf` decides and nothing
 else in the repository watches.** Each is one character away from breaking the
@@ -62,7 +71,7 @@ application without turning an existing test red.
 
 - `proxy_pass` carries no URI part, so `/api/machine` arrives as `/api/machine`.
   Add a trailing slash and the backend is asked for `/machine`, answers 404, and
-  the panel is dead — proved by adding it: three of the five specs went red.
+  the panel is dead — proved by adding it: three specs went red.
 - `try_files … /index.html` puts a path the bundle owns into the app instead of
   nginx's own 404 page. There is one screen today, which is exactly why this
   would rot unnoticed until the first deep link.

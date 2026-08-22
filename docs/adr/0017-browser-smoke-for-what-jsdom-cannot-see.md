@@ -35,7 +35,7 @@ The question this ADR answers is not "should there be end-to-end tests". It is w
 
 ## Decision outcome
 
-**Playwright, five specs, and a written rule about what may join them.** `frontend/e2e/README.md` states the boundary: only what *needs* a browser or the real image. A case Vitest can answer is a slow test for no reason.
+**Playwright, a handful of specs, and a written rule about what may join them.** `frontend/e2e/README.md` states the boundary: only what *needs* a browser or the real image. A case Vitest can answer is a slow test for no reason.
 
 ### Why not leave it to review
 
@@ -49,14 +49,14 @@ Review catches what is legible in a diff. These are not.
 
 It would not work, which settles it before the cost question. jsdom parses CSS and can report computed styles, but it performs **no layout and no hit testing**: there is no geometry, so nothing is ever on top of anything, and `elementFromPoint` has no meaning. The overlay failure is invisible to it in principle rather than by configuration. The accessibility-tree failure fares no better: jsdom has no accessibility tree.
 
-It would also slow down all 131 tests to answer none of these questions.
+It would also slow down every test in the suite to answer none of these questions.
 
 ### Why Playwright and not Cypress
 
 Both would drive a real browser and either would catch the overlay. The three deciders:
 
 - **Playwright drives CDP**, which is what makes the accessibility check possible at all — see below, because that turned out to be the crux.
-- Its `request` fixture asks the three nginx questions **without opening a page**, so three of the five specs cost an HTTP round trip rather than a render. The whole suite runs in about two seconds.
+- Its `request` fixture asks the three nginx questions **without opening a page**, so two of the specs cost an HTTP round trip rather than a render. The whole suite runs in about two seconds.
 - Its actionability check is precisely the assertion wanted: it verifies what is on top of the click point before clicking, and names the element that intercepted. The failure message for the overlay names `machine__window` as intercepting pointer events, which is the diagnosis rather than a symptom.
 
 ### The crux: Playwright's accessible name is not the browser's

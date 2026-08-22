@@ -37,7 +37,13 @@ export function purchase(selector) {
   return request('POST', '/machine/purchases', { body: { selector } });
 }
 
-/** A service visit sets what the machine stocks and holds, so it sends both. */
-export function service(products, changeReserve) {
-  return request('PUT', '/machine/service', { body: { products, changeReserve } });
+/**
+ * A service visit sets what the machine stocks, what it holds and which coins it
+ * takes, so it sends all three. `acceptedCoins` is optional in the contract and
+ * this client always states it: absent means "leave the acceptor as it was", and
+ * an empty list means "take nothing at all", which is a machine out of service.
+ * A caller with a form in front of it knows which of the two it means.
+ */
+export function service(products, changeReserve, acceptedCoins) {
+  return request('PUT', '/machine/service', { body: { products, changeReserve, acceptedCoins } });
 }

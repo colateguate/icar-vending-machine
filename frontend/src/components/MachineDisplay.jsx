@@ -17,6 +17,13 @@ import './MachineDisplay.css';
 const GENERIC_FAULT = 'Out of order';
 
 /**
+ * The one thing this screen says with nothing having gone wrong. A machine that
+ * takes no coin cannot be paid, so it cannot sell — and the customer deserves
+ * to read that rather than infer it from a coin slot with no buttons under it.
+ */
+const OUT_OF_SERVICE = 'Out of service';
+
+/**
  * A message that needs something the document is supposed to carry. If it is
  * missing, fall back rather than print "undefined" or take the panel down with
  * a TypeError. The fallback is per message because "we could not read what you
@@ -45,9 +52,11 @@ const showing =
  * says "Out of order" about a request it understood perfectly well.
  */
 const MESSAGES = {
-  // Not reachable: the coin buttons and the till rows are both rendered from
-  // `acceptedCoins`, so every denomination this panel sends came from the
-  // machine's own answer — and so did every price.
+  // Not reachable, and it stays that way now the till rows come from
+  // `supportedCoins` instead: both lists are the machine's own answer about its
+  // own acceptor, so every denomination this panel names — at the slot, in the
+  // till, or in the set it asks the machine to take — came from the machine.
+  // And so did every price.
   unsupported_coin: () => 'Coin rejected',
   // Reachable, and for the same reason `unknown_product` is: the buttons show
   // the coins the machine took when the panel loaded, and a service visit can
@@ -85,7 +94,12 @@ const MESSAGES = {
   ),
   // Not reachable: every body this panel sends is built by `JSON.stringify`.
   malformed_json: () => 'Request not understood',
-  machine_not_provisioned: () => 'Out of service',
+  // Not the same sentence as a machine somebody switched off, and the
+  // difference is whose problem it is. This one is a machine nobody has
+  // provisioned — our fault, answered with a 503 — while a machine out of
+  // service is a technician's decision, correctly carried out. They stopped
+  // sharing a sentence the day the second one became reachable.
+  machine_not_provisioned: () => 'Not ready yet',
 };
 
 /**
@@ -108,8 +122,18 @@ function messageFor(error) {
   return write ? write(error) : GENERIC_FAULT;
 }
 
-export default function MachineDisplay({ amount, error = null }) {
-  const message = messageFor(error);
+/**
+ * Three things can be on this screen and only one of them at a time, so the
+ * order they win in is the decision worth stating.
+ *
+ * A refusal goes first because it answers the button the customer just pressed;
+ * a standing notice shown over it would make that press look like it did
+ * nothing at all. Out of service comes next: nothing has gone wrong and nobody
+ * asked, but it is true while the customer stands there. The amount is last,
+ * and it is what the screen says when there is nothing to say.
+ */
+export default function MachineDisplay({ amount, error = null, outOfService = false }) {
+  const message = messageFor(error) ?? (outOfService ? OUT_OF_SERVICE : null);
 
   return (
     <p aria-label="Display" className="display" role="status">

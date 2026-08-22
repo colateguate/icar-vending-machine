@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import CoinSwitch from './CoinSwitch';
 import CountField from './CountField';
 import { seedForm } from './serviceForm';
 
@@ -25,10 +26,28 @@ import './ServiceDrawer.css';
  */
 const EMPTY = { products: [], coins: [] };
 
+/**
+ * What is worth saying about a till row beyond its number, and only where it is
+ * not obvious. A denomination the machine has stopped taking is the important
+ * one: the coins are still in there, they count towards nothing, and the person
+ * holding the drawer open is the one who has to decide what to do about them.
+ */
+const noteFor = ({ accepted, dispensableAsChange }) => {
+  if (!accepted) {
+    return 'Not taken at the slot. Coins left inside stay inside — they are never given back as change.';
+  }
+
+  if (!dispensableAsChange) {
+    return 'Never given back as change, so loading it will not turn the lamp off.';
+  }
+
+  return undefined;
+};
+
 export default function ServiceDrawer({
   products,
   changeReserve,
-  acceptedCoins,
+  supportedCoins,
   onService,
   disabled = false,
 }) {
@@ -37,7 +56,7 @@ export default function ServiceDrawer({
   const triggerRef = useRef(null);
 
   const open = () => {
-    setForm(seedForm(products, changeReserve, acceptedCoins));
+    setForm(seedForm(products, changeReserve, supportedCoins));
     setIsOpen(true);
   };
 
@@ -82,10 +101,10 @@ export default function ServiceDrawer({
     panel?.focus();
   }, []);
 
-  const setCount = (kind, index, count) => {
+  const update = (kind, index, change) => {
     setForm((current) => ({
       ...current,
-      [kind]: current[kind].map((row, at) => (at === index ? { ...row, count } : row)),
+      [kind]: current[kind].map((row, at) => (at === index ? { ...row, ...change } : row)),
     }));
   };
 
@@ -99,10 +118,17 @@ export default function ServiceDrawer({
         price,
         count: Number(count),
       })),
-      // `dispensableAsChange` came in on every coin and goes back out on none:
-      // the request body declares additionalProperties false, so a stray field
-      // is a refusal rather than something the API quietly ignores.
+      // `dispensableAsChange` and `accepted` came in on every coin and go back
+      // out on none: the request body declares additionalProperties false, so a
+      // stray field is a refusal rather than something the API quietly ignores.
       form.coins.map(({ denomination, count }) => ({ denomination, count: Number(count) })),
+      // Which coins the machine takes travels as its own list rather than as a
+      // flag on the rows above, because the two are independent: a denomination
+      // can be in the till and not in the acceptor, which is money the machine
+      // holds and will never hand back. Always stated, never omitted — an absent
+      // list means "leave the acceptor alone" and an empty one means "take
+      // nothing", and this form always knows which it means.
+      form.coins.filter(({ accepted }) => accepted).map(({ denomination }) => denomination),
     );
   };
 
@@ -145,7 +171,7 @@ export default function ServiceDrawer({
                     id={`stock-${selector}`}
                     key={selector}
                     label={`${selector} · ${name} · ${price} — units`}
-                    onChange={(value) => setCount('products', index, value)}
+                    onChange={(value) => update('products', index, { count: value })}
                   />
                 ))}
               </ul>
@@ -154,19 +180,22 @@ export default function ServiceDrawer({
             <fieldset className="service__group" disabled={disabled}>
               <legend>Till</legend>
               <ul className="service__rows">
-                {form.coins.map(({ denomination, dispensableAsChange, count }, index) => (
+                {form.coins.map((coin, index) => (
                   <CountField
-                    count={count}
-                    id={`coins-${denomination}`}
-                    key={denomination}
-                    label={`${denomination} — coins`}
-                    note={
-                      dispensableAsChange
-                        ? undefined
-                        : 'Never given back as change, so loading it will not turn the lamp off.'
-                    }
-                    onChange={(value) => setCount('coins', index, value)}
-                  />
+                    count={coin.count}
+                    id={`coins-${coin.denomination}`}
+                    key={coin.denomination}
+                    label={`${coin.denomination} — coins`}
+                    note={noteFor(coin)}
+                    onChange={(value) => update('coins', index, { count: value })}
+                  >
+                    <CoinSwitch
+                      accepted={coin.accepted}
+                      denomination={coin.denomination}
+                      id={`accepts-${coin.denomination}`}
+                      onToggle={(accepted) => update('coins', index, { accepted })}
+                    />
+                  </CountField>
                 ))}
               </ul>
             </fieldset>

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -36,7 +36,16 @@ const machine = {
     { denomination: '0.25', dispensableAsChange: true },
     { denomination: '1.00', dispensableAsChange: false },
   ],
+  supportedCoins: [
+    { denomination: '0.05', dispensableAsChange: true, enabled: true },
+    { denomination: '0.10', dispensableAsChange: true, enabled: true },
+    { denomination: '0.25', dispensableAsChange: true, enabled: true },
+    { denomination: '0.50', dispensableAsChange: true, enabled: false },
+    { denomination: '1.00', dispensableAsChange: false, enabled: true },
+    { denomination: '2.00', dispensableAsChange: false, enabled: false },
+  ],
   exactChangeOnly: false,
+  outOfService: false,
 };
 
 const withAQuarterIn = { ...machine, insertedCoins: bag('0.25', [{ denomination: '0.25', count: 1 }]) };
@@ -215,6 +224,125 @@ describe('MachinePage', () => {
     await user.click(screen.getByRole('button', { name: 'Apply' }));
 
     expect(await screen.findByRole('button', { name: /WATER Water 0.65 20 left/ })).toBeVisible();
+  });
+
+  /**
+   * The two coin lists are read by two different halves of this screen, and the
+   * wiring is the only place that can cross them: the buttons show what the
+   * machine takes, the drawer shows everything its acceptor can read. Crossed,
+   * the panel would either offer the customer a coin the slot refuses or leave
+   * the technician unable to switch one back on.
+   */
+  it('offers the customer what the machine takes and the technician everything it reads', async () => {
+    await openPanel();
+    const user = userEvent.setup();
+
+    const slot = within(screen.getByRole('region', { name: 'Insert a coin' }));
+
+    expect(slot.getAllByRole('button')).toHaveLength(4);
+
+    await user.click(screen.getByRole('button', { name: 'Service' }));
+
+    expect(screen.getAllByRole('checkbox')).toHaveLength(6);
+  });
+
+  /**
+   * And the switch has to reach the API. This is the only test that follows one
+   * from the technician's finger to the request body.
+   */
+  it('carries a denomination switched on in the drawer through to the machine', async () => {
+    await openPanel();
+    service.mockResolvedValue({ machine });
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('button', { name: 'Service' }));
+    await user.click(screen.getByRole('checkbox', { name: '0.50 — accepted' }));
+    await user.click(screen.getByRole('button', { name: 'Apply' }));
+
+    await waitFor(() => expect(service).toHaveBeenCalled());
+    const [, , sentAcceptor] = service.mock.calls[0];
+
+    expect(sentAcceptor).toEqual(['0.05', '0.10', '0.25', '0.50', '1.00']);
+  });
+
+  /**
+   * The state a technician can leave behind, seen from the customer's side of
+   * the glass. It arrives as one boolean the API computes; what it must not
+   * look like is a machine with a coin slot that has simply gone blank.
+   */
+  describe('when the acceptor has been switched off', () => {
+    /**
+     * The empty escrow is the state the API answers with after the visit that
+     * switched the acceptor off — this fixture copies it rather than choosing
+     * it. That it is the *only* reachable one is a promise of the aggregate,
+     * kept and proved on the other side of the network
+     * (`VendingMachineServiceTest::test_servicing_returns_money_a_customer_had_inserted`
+     * and the coin-acceptor tests beside it), not something this suite can
+     * demonstrate or would notice breaking.
+     */
+    const offMachine = {
+      ...machine,
+      insertedCoins: bag('0.00'),
+      acceptedCoins: [],
+      supportedCoins: machine.supportedCoins.map((coin) => ({ ...coin, enabled: false })),
+      exactChangeOnly: true,
+      outOfService: true,
+    };
+
+    const openTheOffPanel = async () => {
+      getState.mockResolvedValue({ machine: offMachine });
+      render(<MachinePage />);
+
+      await screen.findByRole('button', { name: /WATER/ });
+    };
+
+    it('says so on the display instead of leaving an empty coin slot', async () => {
+      await openTheOffPanel();
+
+      expect(screen.getByRole('status', { name: 'Display' })).toHaveTextContent('Out of service');
+      expect(within(screen.getByRole('region', { name: 'Insert a coin' })).queryAllByRole('button')).toHaveLength(0);
+    });
+
+    /**
+     * The lamp is lit in the state the API reports — a till it may not pay out
+     * of cannot give change — but it would be answering a question nobody
+     * asked, and pointing at the wrong cause while it did. Two notices
+     * competing is how the customer reads the one that matters least.
+     */
+    it('says nothing about change, which is true and not the point', async () => {
+      await openTheOffPanel();
+
+      expect(screen.queryByText('Exact change only')).toBeNull();
+      expect(screen.queryByText('Change available')).toBeNull();
+    });
+
+    /**
+     * Nothing here can work, so nothing here pretends to. Left live, a product
+     * button answers "Insert 0.65 more" — advice nobody can follow at a slot
+     * that takes no coin, which is worse than a control that visibly does not
+     * apply.
+     */
+    it('refuses to pretend anything can be bought', async () => {
+      await openTheOffPanel();
+
+      expect(screen.getByRole('button', { name: /WATER/ })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'RETURN-COIN' })).toBeDisabled();
+    });
+
+    /**
+     * And the one control that must survive it: the machine is switched back on
+     * through this door, so locking the cabinet would lock in the state that
+     * made it look locked.
+     */
+    it('leaves the technician a way back in', async () => {
+      const user = userEvent.setup();
+      await openTheOffPanel();
+
+      await user.click(screen.getByRole('button', { name: 'Service' }));
+
+      expect(screen.getByRole('dialog', { name: 'Service' })).toBeVisible();
+      expect(screen.getByRole('checkbox', { name: '0.25 — accepted' })).toBeEnabled();
+    });
   });
 
   /**
