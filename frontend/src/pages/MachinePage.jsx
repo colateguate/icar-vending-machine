@@ -27,6 +27,14 @@ export default function MachinePage() {
   // page, the lock is the mitigation rather than a nicety (ADR-0016).
   const locked = loading || busy || machine === null;
 
+  // A machine taking no coin cannot be paid, so the customer's half of it is
+  // dead rather than merely quiet: left live, a product button answers "insert
+  // more" at a slot that accepts nothing. Nothing is trapped by saying so — a
+  // service visit returns whatever was inserted before it applies anything, so
+  // a machine out of service has no money behind the glass. The technician's
+  // door is deliberately not part of this: it is the way back.
+  const outOfService = machine?.outOfService ?? false;
+
   return (
     <main className="machine">
       <h1 className="machine__brand">Vending machine</h1>
@@ -34,21 +42,34 @@ export default function MachinePage() {
       <div className="machine__body">
         <div className="machine__window">
           <ProductGrid
-            disabled={locked}
+            disabled={locked || outOfService}
             onSelect={purchase}
             products={machine?.products ?? []}
           />
         </div>
 
         <div className="machine__column">
-          <MachineDisplay amount={machine?.insertedCoins.amount ?? '0.00'} error={error} />
-          <ExactChangeLamp lit={machine?.exactChangeOnly ?? false} />
+          <MachineDisplay
+            amount={machine?.insertedCoins.amount ?? '0.00'}
+            error={error}
+            outOfService={outOfService}
+          />
+          {/*
+            The lamp is left out entirely rather than shown unlit, because both
+            of the things it can say are wrong here. A machine taking no coin
+            reports exactChangeOnly — a till it may not pay out of cannot give
+            change — so lighting it would be true and would point at a cause
+            that is not the cause; and unlit it would read "Change available",
+            which is the opposite of true. What it has no state for is the
+            question not applying, so it does not get asked.
+          */}
+          {!outOfService && <ExactChangeLamp lit={machine?.exactChangeOnly ?? false} />}
           <CoinButtons
             coins={machine?.acceptedCoins ?? []}
             disabled={locked}
             onInsert={insertCoin}
           />
-          <ReturnCoinButton disabled={locked} onReturn={returnCoins} />
+          <ReturnCoinButton disabled={locked || outOfService} onReturn={returnCoins} />
         </div>
       </div>
 

@@ -42,7 +42,7 @@ describe('MachineDisplay', () => {
     ['product_out_of_stock', 'Sold out'],
     ['concurrent_modification', 'Busy, try again'],
     ['malformed_json', 'Request not understood'],
-    ['machine_not_provisioned', 'Out of service'],
+    ['machine_not_provisioned', 'Not ready yet'],
   ])('answers %s with "%s"', (code, sentence) => {
     render(<MachineDisplay amount="0.65" error={refusal(code)} />);
 
@@ -118,6 +118,49 @@ describe('MachineDisplay', () => {
     render(<MachineDisplay amount="0.00" error={refusal('a_code_from_the_future')} />);
 
     expect(screen.getByText('Out of order')).toBeVisible();
+  });
+
+  /**
+   * A machine taking no coin at all cannot be paid, and the screen is where it
+   * says so. Nothing has gone wrong and nobody has asked it anything — this is
+   * the one message that is true standing still.
+   */
+  it('says it is out of service when the machine takes no coin', () => {
+    render(<MachineDisplay amount="0.00" outOfService />);
+
+    expect(screen.getByRole('status', { name: 'Display' })).toHaveTextContent('Out of service');
+  });
+
+  /**
+   * The precedence, and it is a decision rather than an accident. A refusal
+   * answers the thing the customer just pressed; the standing notice answers a
+   * question they did not ask. Show the notice over the refusal and pressing a
+   * button appears to do nothing at all.
+   */
+  it('lets a refusal speak over the standing notice, because it answers the last press', () => {
+    render(<MachineDisplay amount="0.00" error={refusal('product_out_of_stock')} outOfService />);
+
+    expect(screen.getByRole('status', { name: 'Display' })).toHaveTextContent('Sold out');
+  });
+
+  /**
+   * Two states that both stop a sale and are not the same thing: one is a
+   * machine nobody has stocked yet, which is our fault and answered with a 503;
+   * the other is a technician switching the acceptor off, which is a decision.
+   * They used to share a sentence, and a shared sentence is how two meanings
+   * quietly become one.
+   */
+  it('tells a machine nobody provisioned apart from one somebody switched off', () => {
+    const { unmount } = render(
+      <MachineDisplay amount="0.00" error={refusal('machine_not_provisioned')} />,
+    );
+
+    expect(screen.getByText('Not ready yet')).toBeVisible();
+    unmount();
+
+    render(<MachineDisplay amount="0.00" outOfService />);
+
+    expect(screen.getByText('Out of service')).toBeVisible();
   });
 
   /**
