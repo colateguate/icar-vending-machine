@@ -50,6 +50,16 @@ This is deliberately **not** the argument "the app is small so we skipped the li
 
 **Why not axios**: `fetch` is in every runtime that matters. axios is a dependency bought to get a nicer surface over something already present, and the one feature worth having — interceptors — is a nine-line `httpClient` here, where it also becomes the single place that understands `application/problem+json`.
 
+### Why the panel repeats two rules the API already enforces
+
+The claim above — a component that cannot reach the network cannot grow a business decision — needs an exception stated, because the service form now holds a copy of the selector format and the amount format, and refuses to send a visit that breaks either.
+
+The distinction that makes this survivable is *whose rule it is*. Neither is a decision about vending: nothing here works out whether a sale is possible, what change to give, or what a product may cost. They are the shape of two fields, stated in the published contract — one as `pattern` in `docs/openapi.yaml`, the other as the amount format every endpoint documents — and the 422 remains the only authority on both. The panel is not deciding; it is declining to ask a question it can already see the answer to.
+
+What buys the copy is the shape of the endpoint rather than politeness. `PUT /api/machine/service` states the catalogue whole, so its refusal is whole too: one mistyped selector and the technician loses every other row they had just filled in. A form that catches it locally turns a lost visit into a message beside a box.
+
+The rules live in one module, `components/productRules.js`, and its tests spell out the values that must keep passing — because the dangerous direction of drift is not looser than the API but **stricter**: a panel that refuses what the machine accepts makes the machine look broken, and nobody debugging that would think to look in the client.
+
 ### Why the tests mock the module, not the network
 
 Mock Service Worker intercepts at the network level, so components exercise the real service layer, which is higher fidelity and is what the 2026 guidance suggests.
@@ -69,4 +79,5 @@ It was rejected because the seam already exists as a module. `services/` **is** 
 - **No in-flight deduplication, and that is a real defect surface.** Double-clicking a coin button sends two requests. The mitigation is disabling controls while an action is pending, which `useMachine` tracks — but that is discipline, not a guarantee: a new control that forgets to read the pending flag reintroduces the bug, and nothing fails when it does. A library would have made this structural instead of remembered.
 - **The layer rule has no CI teeth.** The backend's equivalent is a Deptrac failure; this one is a reviewer agent and a paragraph in `CLAUDE.md`, both of which a hurried afternoon can ignore. The asymmetry is worth stating rather than glossing: the frontend's architecture is upheld by attention, and attention is the thing that runs out.
 - The decision is revisitable but not free to revisit. If a second screen ever shares server state with this one, "no library" stops being right, and adopting it then costs more than adopting it now would have. Accepted knowingly — no second screen is on the backlog.
+- **Two format rules now live in two places.** The selector and amount formats are stated in the backend's value objects and mirrored in `components/productRules.js`, and nothing enforces that they agree — no test spans both halves of the repository. They can drift, and the direction that hurts is the client being stricter, which presents as the machine refusing something it would happily accept. The mitigation is a comment naming the source of each pattern and a test listing what must keep passing; the guarantee would have been not copying them, and that was weighed against losing a whole visit to one typo.
 - Layer-based structure spreads one feature's pieces across four folders. With one feature that is invisible; at six it is the exact friction feature-slicing exists to remove, and whoever gets there will be paying for this decision rather than benefiting from it.

@@ -60,3 +60,41 @@ media — completa la gestión del catálogo. Es la mitad de riesgo del 05 origi
 ## Origen
 
 Desglose del ticket 05 (decisión del usuario, 2026-08-22) — el 05 original mezclaba edición, alta, baja y tres validaciones nuevas en un solo commit
+
+---
+
+## Cierre
+
+Implementado en `feat/the-shelf-takes-a-new-product`. Cierra la épica de
+funcionalidad; solo queda el 06 de documentación.
+
+Las dos decisiones que el ticket dejaba abiertas, resueltas con el usuario:
+
+1. **Espejo en el cliente**, no "solo el servidor". Pesó un dato medido: el 422
+   de `invalid_product_selector` **no lleva la extensión `field`**, así que sin
+   validación local el panel puede decir que algo está mal pero no cuál — el
+   valor ofensivo solo aparece en el `detail`, que es prosa que el panel tiene
+   prohibido leer. La decisión y su consecuencia negativa quedaron escritas en
+   ADR-0016, no solo en un comentario.
+2. **Habla al pulsar y luego en vivo.** Silencio mientras se teclea; al primer
+   rechazo, mensajes junto a cada campo y foco en el primero malo; a partir de
+   ahí se revalida según se corrige.
+
+Dos cosas que no estaban en el ticket y aparecieron implementando:
+
+- **`required` bloqueaba la validación propia.** Con filas en blanco los campos
+  vacíos se volvieron alcanzables, y la validación nativa refusaba el submit
+  antes de que corriera la nuestra: sin mensajes, sin foco, y con un bocadillo
+  que ni un lector de pantalla anuncia bien ni un test puede leer. El formulario
+  pasa a `noValidate` — un solo portero — y las reglas crecen para cubrir lo que
+  el navegador cubría: nombre no vacío y unidades enteras.
+- **El duplicado solo se marca en la fila nueva.** La primera versión marcaba
+  las dos, "porque cualquiera podría ser el error". Lo desmintió un test: la
+  fila que ya está en el estante muestra el selector como rótulo, no como
+  campo, así que el mensaje no tenía dónde vivir ni nada que el lector pudiera
+  hacer con él. La fila que se está dando de alta es la que puede ceder.
+
+Queda una limitación conocida y aceptada: tras guardar, la fila recién creada
+sigue con su selector editable hasta que se cierra y reabre el cajón. Es
+coherente — el formulario siempre muestra lo que enviará, y lo que enviará es
+lo que la máquina tiene — y reabrir la sella.

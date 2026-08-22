@@ -19,13 +19,24 @@
  * a separator, so a trailing space inside one element is trimmed away and
  * "WATER — name" arrives as "WATER —name".
  */
-function Field({ id, selector, label, type, inputMode, min, step, value, onChange }) {
+function Field({ id, selector, label, type, inputMode, min, step, value, problem, onChange }) {
+  const problemId = `${id}-problem`;
+
   return (
     <div className={`service__cell service__cell--${label}`}>
       <label htmlFor={id}>
         <span className="visually-hidden">{selector} —</span> <span>{label}</span>
       </label>
+      {/*
+        `aria-invalid` and a description rather than a colour: a red border says
+        nothing to a screen reader and nothing to anyone who cannot tell red
+        from grey. Both attributes are left off entirely when there is no
+        problem — `aria-invalid="false"` on every field is noise a screen reader
+        reads out.
+      */}
       <input
+        aria-describedby={problem ? problemId : undefined}
+        aria-invalid={problem ? true : undefined}
         className={`service__field service__field--${label}`}
         id={id}
         inputMode={inputMode}
@@ -36,22 +47,53 @@ function Field({ id, selector, label, type, inputMode, min, step, value, onChang
         type={type}
         value={value}
       />
+      {problem && (
+        <p className="service__problem" id={problemId}>
+          {problem}
+        </p>
+      )}
     </div>
   );
 }
 
-export default function ProductRow({ product, onChange, onRemove }) {
-  const { id, selector, name, price, count } = product;
+export default function ProductRow({ product, problems = {}, onChange, onRemove }) {
+  const { id, selector, name, price, count, isNew } = product;
+
+  /*
+   * What this row calls itself in the names of its own controls. A row still
+   * being filled in has no selector yet, and "— selector" is not something to
+   * read out to anybody: until it has a word of its own, it borrows one.
+   */
+  const known = selector || 'the new product';
 
   return (
     <li className="service__row service__row--product">
-      <p className="service__selector">{selector}</p>
+      {/*
+        A product already on the shelf shows the machine's word for it; one
+        being taken on is still deciding, and types it. The two never coexist:
+        the badge and the field are the same thing in two states, which is why
+        one replaces the other rather than sitting beside it.
+      */}
+      {isNew ? (
+        <Field
+          id={`${id}-selector`}
+          label="selector"
+          onChange={(value) => onChange({ selector: value })}
+          problem={problems.selector}
+          selector={known}
+          type="text"
+          value={selector}
+        />
+      ) : (
+        <p className="service__selector">{selector}</p>
+      )}
 
       <Field
         id={`${id}-name`}
         label="name"
         onChange={(value) => onChange({ name: value })}
-        selector={selector}
+        problem={problems.name}
+        selector={known}
         type="text"
         value={name}
       />
@@ -69,17 +111,25 @@ export default function ProductRow({ product, onChange, onRemove }) {
         inputMode="decimal"
         label="price"
         onChange={(value) => onChange({ price: value })}
-        selector={selector}
+        problem={problems.price}
+        selector={known}
         type="text"
         value={price}
       />
 
       <Field
-        id={`${id}-units`}
+        /*
+          The element is addressed by the word the payload uses and labelled
+          with the word a person reads. They were the same for a while and the
+          seam showed: a lookup table pairing "count" with "units" so the form
+          could find a field it had just complained about.
+        */
+        id={`${id}-count`}
         label="units"
         min="0"
         onChange={(value) => onChange({ count: value })}
-        selector={selector}
+        problem={problems.count}
+        selector={known}
         step="1"
         type="number"
         value={count}
@@ -94,7 +144,7 @@ export default function ProductRow({ product, onChange, onRemove }) {
         without reaching for a class name.
       */}
       <button className="service__remove" onClick={onRemove} type="button">
-        <span>Remove</span> <span className="visually-hidden">{selector}</span>
+        <span>Remove</span> <span className="visually-hidden">{known}</span>
       </button>
     </li>
   );

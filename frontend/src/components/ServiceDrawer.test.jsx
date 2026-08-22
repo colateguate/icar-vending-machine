@@ -548,6 +548,196 @@ describe('ServiceDrawer', () => {
     });
   });
 
+  describe('taking on a product it never had', () => {
+    it('offers a blank row with a selector of its own to fill in', async () => {
+      const user = userEvent.setup();
+      drawer();
+      await open(user);
+
+      await user.click(screen.getByRole('button', { name: 'Add product' }));
+
+      expect(screen.getByRole('textbox', { name: /selector/ })).toHaveValue('');
+    });
+
+    const fillIn = async (user, { selector, name, price, units }) => {
+      await user.click(screen.getByRole('button', { name: 'Add product' }));
+      await user.type(screen.getByRole('textbox', { name: /selector/ }), selector);
+      await user.type(screen.getByRole('textbox', { name: `${selector} — name` }), name);
+      await user.clear(screen.getByRole('textbox', { name: `${selector} — price` }));
+      await user.type(screen.getByRole('textbox', { name: `${selector} — price` }), price);
+      await user.clear(screen.getByRole('spinbutton', { name: `${selector} — units` }));
+      await user.type(screen.getByRole('spinbutton', { name: `${selector} — units` }), units);
+    };
+
+    it('sends the new product alongside the ones already on the shelf', async () => {
+      const onService = vi.fn();
+      const user = userEvent.setup();
+      drawer({ onService });
+      await open(user);
+
+      await fillIn(user, { selector: 'TEA', name: 'Iced Tea', price: '0.80', units: '4' });
+      await user.click(screen.getByRole('button', { name: 'Apply' }));
+
+      const [sentProducts] = onService.mock.calls[0];
+
+      expect(sentProducts).toContainEqual({
+        selector: 'TEA',
+        name: 'Iced Tea',
+        price: '0.80',
+        count: 4,
+      });
+      expect(sentProducts).toHaveLength(3);
+    });
+
+    it('lets a blank row be taken back before it is ever sent', async () => {
+      const onService = vi.fn();
+      const user = userEvent.setup();
+      drawer({ onService });
+      await open(user);
+
+      await user.click(screen.getByRole('button', { name: 'Add product' }));
+      await user.click(screen.getByRole('button', { name: 'Remove the new product' }));
+      await user.click(screen.getByRole('button', { name: 'Apply' }));
+
+      expect(screen.queryByRole('textbox', { name: /selector/ })).toBeNull();
+      expect(onService.mock.calls[0][0]).toHaveLength(2);
+    });
+  });
+
+  describe('what it refuses to send', () => {
+    /**
+     * The whole reason this form validates at all: the visit is not attempted,
+     * so nothing the technician typed into the other rows is lost to a 422 that
+     * refuses the lot.
+     */
+    it('does not send a shelf it knows the machine will refuse', async () => {
+      const onService = vi.fn();
+      const user = userEvent.setup();
+      drawer({ onService });
+      await open(user);
+
+      await user.click(screen.getByRole('button', { name: 'Add product' }));
+      await user.type(screen.getByRole('textbox', { name: /selector/ }), 'iced tea');
+      await user.click(screen.getByRole('button', { name: 'Apply' }));
+
+      expect(onService).not.toHaveBeenCalled();
+    });
+
+    /**
+     * And it says what is wrong beside the box that is wrong. A message in one
+     * place about a field somewhere else is how a form makes someone hunt.
+     */
+    it('says what is wrong where it is wrong', async () => {
+      const user = userEvent.setup();
+      drawer();
+      await open(user);
+
+      await user.click(screen.getByRole('button', { name: 'Add product' }));
+      await user.type(screen.getByRole('textbox', { name: /selector/ }), 'iced tea');
+      await user.click(screen.getByRole('button', { name: 'Apply' }));
+
+      const field = screen.getByRole('textbox', { name: /selector/ });
+
+      expect(field).toHaveAccessibleDescription(/capital/i);
+      expect(field).toBeInvalid();
+    });
+
+    /**
+     * Pressing a button and having nothing happen is the failure this avoids:
+     * the focus lands on the field that stopped the visit, so the answer to
+     * "why did nothing happen" is already under the cursor.
+     */
+    it('puts the cursor in the field that stopped it', async () => {
+      const user = userEvent.setup();
+      drawer();
+      await open(user);
+
+      await user.click(screen.getByRole('button', { name: 'Add product' }));
+      await user.type(screen.getByRole('textbox', { name: /selector/ }), 'iced tea');
+      await user.click(screen.getByRole('button', { name: 'Apply' }));
+
+      expect(screen.getByRole('textbox', { name: /selector/ })).toHaveFocus();
+    });
+
+    it('refuses a price the machine could not read', async () => {
+      const onService = vi.fn();
+      const user = userEvent.setup();
+      drawer({ onService });
+      await open(user);
+
+      await user.clear(screen.getByRole('textbox', { name: 'WATER — price' }));
+      await user.type(screen.getByRole('textbox', { name: 'WATER — price' }), '1,50');
+      await user.click(screen.getByRole('button', { name: 'Apply' }));
+
+      expect(onService).not.toHaveBeenCalled();
+      expect(screen.getByRole('textbox', { name: 'WATER — price' })).toBeInvalid();
+    });
+
+    /**
+     * Two rows claiming one selector is refused here rather than by the API,
+     * which refuses the visit whole. Both rows are marked, because either one
+     * could be the one that was meant.
+     */
+    it('refuses a new row claiming a selector the shelf already uses', async () => {
+      const onService = vi.fn();
+      const user = userEvent.setup();
+      drawer({ onService });
+      await open(user);
+
+      await user.click(screen.getByRole('button', { name: 'Add product' }));
+      await user.type(screen.getByRole('textbox', { name: /selector/ }), 'WATER');
+      await user.click(screen.getByRole('button', { name: 'Apply' }));
+
+      expect(onService).not.toHaveBeenCalled();
+
+      /*
+       * Marked on the new row and only there. The WATER already on the shelf
+       * shows the machine's word for it as a heading rather than a field, so a
+       * message about it would have nowhere to sit and nothing the reader could
+       * do about it — and there are now two textboxes whose name starts with
+       * WATER, which is why this one is addressed by its whole name.
+       */
+      const claim = screen.getByRole('textbox', { name: 'WATER — selector' });
+
+      expect(claim).toBeInvalid();
+      expect(claim).toHaveAccessibleDescription(/another row/i);
+    });
+
+    /**
+     * Nothing complains before the first Apply: a form that objects to "W" on
+     * the way to "WATER" teaches people to ignore what it says.
+     */
+    it('says nothing while a new selector is still being typed', async () => {
+      const user = userEvent.setup();
+      drawer();
+      await open(user);
+
+      await user.click(screen.getByRole('button', { name: 'Add product' }));
+      await user.type(screen.getByRole('textbox', { name: /selector/ }), 'T');
+
+      expect(screen.getByRole('textbox', { name: /selector/ })).toBeValid();
+    });
+
+    /**
+     * And once a field has been told off it stops waiting for the next press:
+     * the error goes as the mistake goes.
+     */
+    it('stops complaining about a field as it is corrected', async () => {
+      const user = userEvent.setup();
+      drawer();
+      await open(user);
+
+      await user.click(screen.getByRole('button', { name: 'Add product' }));
+      await user.type(screen.getByRole('textbox', { name: /selector/ }), 'iced tea');
+      await user.click(screen.getByRole('button', { name: 'Apply' }));
+
+      await user.clear(screen.getByRole('textbox', { name: /selector/ }));
+      await user.type(screen.getByRole('textbox', { name: /selector/ }), 'TEA');
+
+      expect(screen.getByRole('textbox', { name: 'TEA — selector' })).toBeValid();
+    });
+  });
+
   describe('while the machine is answering', () => {
     it('refuses a second visit until the first is answered', async () => {
       const onService = vi.fn();

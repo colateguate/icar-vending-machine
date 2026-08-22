@@ -3,6 +3,20 @@
  * Kept apart from the component because it is the one piece of this drawer with
  * no lifecycle: given a machine, it always produces the same starting form.
  */
+/**
+ * A row for a product the machine does not stock yet. `isNew` is what tells the
+ * rest of the form that this selector is still being decided: it is editable,
+ * and it is the only kind of selector these rules get to judge.
+ *
+ * The id cannot be the selector, because there is not one yet, so it is minted
+ * from a counter the drawer keeps. It cannot collide with a real selector
+ * either — those start with a capital letter — which matters, because the id is
+ * what every field of this row is addressed by.
+ */
+export function blankProduct(id) {
+  return { id, selector: '', name: '', price: '', count: '0', isNew: true };
+}
+
 const countOf = (coins, denomination) =>
   coins.find((coin) => coin.denomination === denomination)?.count ?? 0;
 
@@ -29,6 +43,7 @@ export function seedForm(products, changeReserve, supportedCoins) {
       id: product.selector,
       price: String(product.price),
       count: String(product.count),
+      isNew: false,
     })),
     coins: supportedCoins.map(({ denomination, dispensableAsChange, enabled }) => ({
       id: denomination,

@@ -207,6 +207,41 @@
   text-align: left;
 }
 
+/*
+ * Amber, the same colour the till uses to warn about a coin, and never colour
+ * alone: the message is attached to its field with `aria-describedby` and the
+ * field carries `aria-invalid`, so what this rule adds is emphasis for people
+ * who can see it, not the information itself.
+ */
+.service__problem {
+  color: var(--lamp-amber);
+  font-size: 0.6875rem;
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.service__add {
+  background: transparent;
+  border: 1px dashed var(--steel-500);
+  border-radius: var(--radius-sm);
+  color: var(--ink-dim);
+  cursor: pointer;
+  font-size: 0.75rem;
+  margin-top: var(--space-3);
+  padding: var(--space-2);
+  width: 100%;
+}
+
+.service__add:hover:not(:disabled) {
+  border-color: var(--led-dim);
+  color: var(--ink);
+}
+
+.service__add:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .service__remove {
   align-self: center;
   background: transparent;

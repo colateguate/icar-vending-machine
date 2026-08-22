@@ -70,9 +70,14 @@ const MESSAGES = {
   // standing at the same machine — can replace it. Nothing refetches, so a
   // button here can name a product the machine has stopped stocking.
   unknown_product: () => 'Unknown selection',
-  // Not reachable: a selector is only ever echoed back from what the machine
-  // published. The service form edits counts and nothing else, so no selector
-  // is ever typed into this panel.
+  // Reachable now, and only barely — which is the interesting part. The service
+  // form types selectors, so this is no longer a code no request of ours can
+  // provoke; but that form mirrors the same format the API enforces and refuses
+  // to send what it knows will bounce. So arriving here means the mirror and
+  // the original have drifted apart, which is exactly the failure the mirror
+  // was worth worrying about. The message stays deliberately about the
+  // selection rather than about the form: by the time this shows, the panel has
+  // already been proved wrong about what it thought it knew.
   invalid_product_selector: () => 'Unknown selection',
   product_out_of_stock: () => 'Sold out',
   insufficient_funds: showing('missingAmount', (amount) => `Insert ${amount} more`),
