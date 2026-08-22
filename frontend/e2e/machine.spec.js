@@ -130,14 +130,26 @@ test('the drawer names its controls out of text that is never on screen', async 
   await page.getByRole('button', { name: 'Service' }).click();
   await expect(page.getByRole('dialog', { name: 'Service' })).toBeVisible();
 
-  const named = await namedNodes(page);
+  // The drawer opens on Products; only the selected tab's panel is mounted, so
+  // each half is read with its own tab in front. The coin switch is the name
+  // this spec exists for: since the "accepted" of its label moved into the
+  // column heading, the ENTIRE name lives in a visually-hidden element — turn
+  // that class into display:none and the switch has no name at all.
+  const products = await namedNodes(page);
 
-  expect(named).toContainEqual({ role: 'checkbox', name: '0.50 — accepted' });
-  expect(named).toContainEqual({ role: 'checkbox', name: '1.00 — accepted' });
-  expect(named).toContainEqual({ role: 'textbox', name: 'WATER — name' });
-  expect(named).toContainEqual({ role: 'textbox', name: 'WATER — price' });
-  expect(named).toContainEqual({ role: 'spinbutton', name: 'WATER — units' });
-  expect(named).toContainEqual({ role: 'button', name: 'Remove WATER' });
+  expect(products).toContainEqual({ role: 'tab', name: 'Products' });
+  expect(products).toContainEqual({ role: 'tab', name: 'Coins' });
+  expect(products).toContainEqual({ role: 'textbox', name: 'WATER — name' });
+  expect(products).toContainEqual({ role: 'textbox', name: 'WATER — price' });
+  expect(products).toContainEqual({ role: 'spinbutton', name: 'WATER — units' });
+  expect(products).toContainEqual({ role: 'button', name: 'Remove WATER' });
+
+  await page.getByRole('tab', { name: 'Coins' }).click();
+
+  const coins = await namedNodes(page);
+
+  expect(coins).toContainEqual({ role: 'checkbox', name: '0.50 — accepted' });
+  expect(coins).toContainEqual({ role: 'checkbox', name: '1.00 — accepted' });
 });
 
 /**

@@ -75,7 +75,59 @@
 .service__form {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
+  /* Tighter than before on purpose: the strip and its panel are one thing. */
+  gap: 0;
+}
+
+.service__form .service__actions {
+  margin-top: var(--space-5);
+}
+
+/*
+ * The tab strip. The selected tab joins the panel below it — same background,
+ * no bottom border — because that is how a physical tab says which folder it
+ * belongs to.
+ */
+.service__tabs {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.service__tab {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  color: var(--ink-dim);
+  cursor: pointer;
+  flex: 1;
+  font-size: 0.75rem;
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.14em;
+  padding: var(--space-2) var(--space-3);
+}
+
+.service__tab[aria-selected='true'] {
+  background: rgb(0 0 0 / 20%);
+  border-color: var(--steel-700);
+  border-bottom-color: transparent;
+  color: var(--ink);
+}
+
+/*
+ * "Taken" over the switches, "In till" over the counts — said once, where six
+ * rows used to repeat "accepted" each. Hidden from the accessibility tree on
+ * purpose: every switch still carries "<coin> — accepted" in its own name, and
+ * a heading read out between rows would be noise on top of names that already
+ * say it.
+ */
+.service__till-head {
+  color: var(--ink-dim);
+  display: flex;
+  font-size: 0.6875rem;
+  font-variant-caps: all-small-caps;
+  justify-content: space-between;
+  letter-spacing: 0.14em;
+  margin: 0 0 var(--space-2);
 }
 
 .service__group {
@@ -97,7 +149,9 @@
 .service__rows {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  /* More air between rows than inside them: measured the other way round, the
+     shelf read as one mass and Remove read as belonging to nothing. */
+  gap: var(--space-4);
   list-style: none;
   margin: 0;
   padding: 0;
@@ -151,6 +205,17 @@
  * is the width it gets.
  */
 .service__row--product {
+  /*
+   * A card, and the border is doing work: measured before it existed, the space
+   * inside a row was twelve times the space between rows (147px of fields over
+   * a 12px gap), so three products read as one mass — and Remove, sitting level
+   * with the selector, could as easily belong to the first line as to the
+   * product. The boundary is what says what the button removes.
+   */
+  background: rgb(255 255 255 / 3%);
+  border: 1px solid var(--steel-700);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
   grid-template-areas:
     'selector remove'
     'name     name'
