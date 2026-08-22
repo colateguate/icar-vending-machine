@@ -128,6 +128,58 @@ final class JsonBodyTest extends TestCase
         $items[1]->nonNegativeInt('count');
     }
 
+    public function test_it_reads_a_list_of_strings(): void
+    {
+        self::assertSame(
+            ['0.05', '1.00'],
+            self::body('{"acceptedCoins": ["0.05", "1.00"]}')->stringList('acceptedCoins'),
+        );
+    }
+
+    public function test_an_empty_list_of_strings_is_a_list(): void
+    {
+        self::assertSame([], self::body('{"acceptedCoins": []}')->stringList('acceptedCoins'));
+    }
+
+    public function test_a_string_is_not_a_list_of_strings(): void
+    {
+        $this->expectException(InvalidRequestPayload::class);
+        $this->expectExceptionMessage('acceptedCoins');
+
+        self::body('{"acceptedCoins": "0.05"}')->stringList('acceptedCoins');
+    }
+
+    /**
+     * The index is the whole value of the message: a client told only "invalid
+     * payload" has to guess which of six coins it got wrong.
+     */
+    public function test_an_element_that_is_not_a_string_names_its_index(): void
+    {
+        $this->expectException(InvalidRequestPayload::class);
+        $this->expectExceptionMessage('acceptedCoins[1]');
+
+        self::body('{"acceptedCoins": ["0.05", 1.00]}')->stringList('acceptedCoins');
+    }
+
+    public function test_it_knows_which_fields_the_caller_mentioned(): void
+    {
+        $body = self::body('{"acceptedCoins": []}');
+
+        self::assertTrue($body->has('acceptedCoins'));
+        self::assertFalse($body->has('products'));
+    }
+
+    /**
+     * The trap this method exists for. A field sent as null is a field the
+     * caller mentioned, so `has()` says yes and the reader that follows gets to
+     * refuse the value — rather than null being silently indistinguishable from
+     * having said nothing at all, which is a different instruction.
+     */
+    public function test_a_field_sent_as_null_still_counts_as_mentioned(): void
+    {
+        self::assertTrue(self::body('{"acceptedCoins": null}')->has('acceptedCoins'));
+    }
+
     public function test_a_body_that_is_not_json_is_malformed(): void
     {
         $this->expectException(MalformedJson::class);

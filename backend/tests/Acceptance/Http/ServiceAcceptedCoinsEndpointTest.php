@@ -182,19 +182,39 @@ final class ServiceAcceptedCoinsEndpointTest extends ApiTestCase
         yield 'a coin no machine of this model reads' => [['0.02'], 'unsupported_coin'];
     }
 
-    public function test_it_refuses_a_coin_list_that_is_not_a_list(): void
+    /**
+     * @param mixed $acceptedCoins what the client sent where a list belongs
+     */
+    #[DataProvider('coinListsThatAreNotLists')]
+    public function test_it_refuses_a_coin_list_that_is_not_a_list(mixed $acceptedCoins): void
     {
         $this->givenAStockedMachine();
 
         $this->request('PUT', '/api/machine/service', [
             'products' => [],
             'changeReserve' => [],
-            'acceptedCoins' => '0.25',
+            'acceptedCoins' => $acceptedCoins,
         ]);
 
         self::assertResponseStatusCodeSame(422);
         self::assertSame('invalid_request_payload', $this->responseBody()['code']);
         self::assertSame('acceptedCoins', $this->responseBody()['field']);
+    }
+
+    /**
+     * Null is the interesting one, and it is refused rather than read as
+     * silence. Saying nothing about the acceptor is done by leaving the field
+     * out; sending it as null is a client that meant something and did not say
+     * what, and guessing which of "leave it alone" or "take nothing" they meant
+     * is the guess that empties a machine.
+     *
+     * @return iterable<string, array{mixed}>
+     */
+    public static function coinListsThatAreNotLists(): iterable
+    {
+        yield 'a bare denomination' => ['0.25'];
+        yield 'null' => [null];
+        yield 'an object keyed by index' => [(object) ['0' => '0.25']];
     }
 
     /**

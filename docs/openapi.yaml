@@ -713,9 +713,10 @@ components:
         dispensableAsChange:
           type: boolean
           description: |
-            Whether this coin can come back out of the change chute. False for
-            the 1.00 coin and true for the other three, which is the brief's
-            four-in, three-out rule stated rather than left to be inferred.
+            Whether this coin can come back out of the change chute. The
+            brief's rule for the 1.00 — it goes in and never comes back —
+            extends to the 2.00 by the same reading; the smaller pieces are
+            all dispensable. Stated here rather than left to be inferred.
 
             Loading a coin that is not dispensable into the reserve therefore
             does nothing for change-making, and a service screen worth its salt
@@ -793,8 +794,9 @@ components:
           type: array
           description: |
             Which coins the slot takes, smallest first — a different question
-            from `changeReserve`, which is what the machine currently holds. A
-            machine serviced down to an empty till still accepts all four.
+            from `changeReserve`, which is what the machine currently holds.
+            An empty till changes nothing about what the slot accepts: that is
+            set by the last service visit, not by what is left inside.
 
             It is published so a client does not have to carry the list itself.
             The same goes for `dispensableAsChange`: that the 1.00 coin goes in

@@ -34,6 +34,22 @@ final class MachineStateResponse
      */
     public static function from(MachineStateView $view): array
     {
+        return [
+            'products' => self::shelves($view),
+            'changeReserve' => CoinsResponse::from($view->changeReserve),
+            'insertedCoins' => CoinsResponse::from($view->insertedCoins),
+            'acceptedCoins' => self::whatTheSlotTakes($view),
+            'supportedCoins' => self::whatTheAcceptorReads($view),
+            'exactChangeOnly' => $view->exactChangeOnly,
+            'outOfService' => $view->outOfService,
+        ];
+    }
+
+    /**
+     * @return list<array{selector: string, name: string, price: string, count: int}>
+     */
+    private static function shelves(MachineStateView $view): array
+    {
         $products = [];
         foreach ($view->products as $product) {
             $products[] = [
@@ -44,36 +60,45 @@ final class MachineStateResponse
             ];
         }
 
-        $acceptedCoins = [];
+        return $products;
+    }
+
+    /**
+     * @return list<array{denomination: string, dispensableAsChange: bool}>
+     */
+    private static function whatTheSlotTakes(MachineStateView $view): array
+    {
+        $coins = [];
         foreach ($view->acceptedCoins as $coin) {
-            $acceptedCoins[] = [
+            $coins[] = [
                 'denomination' => $coin->amount()->toDecimalString(),
                 'dispensableAsChange' => $coin->isDispensableAsChange(),
             ];
         }
 
-        // Every coin the acceptor can read, and whether this machine is taking
-        // it. The overlap with acceptedCoins is deliberate: that one answers
-        // the customer's question — what may I put in — and is the shape
-        // clients already read, while this one answers the technician's, and
-        // is the only list that can show a coin the machine is refusing.
-        $supportedCoins = [];
+        return $coins;
+    }
+
+    /**
+     * Every coin the acceptor can read, and whether this machine is taking it.
+     * The overlap with the list above is deliberate: that one answers the
+     * customer's question — what may I put in — and is the shape clients
+     * already read, while this one answers the technician's, and is the only
+     * list that can show a coin the machine is refusing.
+     *
+     * @return list<array{denomination: string, dispensableAsChange: bool, enabled: bool}>
+     */
+    private static function whatTheAcceptorReads(MachineStateView $view): array
+    {
+        $coins = [];
         foreach ($view->supportedCoins as $coin) {
-            $supportedCoins[] = [
+            $coins[] = [
                 'denomination' => $coin->amount()->toDecimalString(),
                 'dispensableAsChange' => $coin->isDispensableAsChange(),
                 'enabled' => \in_array($coin, $view->acceptedCoins, true),
             ];
         }
 
-        return [
-            'products' => $products,
-            'changeReserve' => CoinsResponse::from($view->changeReserve),
-            'insertedCoins' => CoinsResponse::from($view->insertedCoins),
-            'acceptedCoins' => $acceptedCoins,
-            'supportedCoins' => $supportedCoins,
-            'exactChangeOnly' => $view->exactChangeOnly,
-            'outOfService' => $view->outOfService,
-        ];
+        return $coins;
     }
 }
