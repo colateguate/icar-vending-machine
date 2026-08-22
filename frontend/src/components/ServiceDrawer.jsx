@@ -3,7 +3,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import CoinSwitch from './CoinSwitch';
 import CountField from './CountField';
 import ProductRow from './ProductRow';
-import { seedForm } from './serviceForm';
+import { problemsWith } from './productRules';
+import { blankProduct, seedForm } from './serviceForm';
 
 // The whole `service` block, rows included. CountField renders elements of this
 // block rather than a block of its own, so it imports no stylesheet.
@@ -26,6 +27,12 @@ import './ServiceDrawer.css';
  * prison.
  */
 const EMPTY = { products: [], coins: [] };
+
+/** A shelf row's fields, in the order they are read on screen. */
+const FIELDS = ['selector', 'name', 'price', 'count'];
+
+/** One object, so an untouched form does not hand its rows a new one a render. */
+const NOTHING_WRONG = {};
 
 /**
  * What is worth saying about a till row beyond its number, and only where it is
@@ -56,8 +63,29 @@ export default function ServiceDrawer({
   const [form, setForm] = useState(EMPTY);
   const triggerRef = useRef(null);
 
+  /**
+   * Whether this form has been sent back once. Before that it says nothing — a
+   * form that objects to "W" on the way to "WATER" teaches people to ignore it
+   * — and after it, it keeps checking as things are corrected, so a fixed field
+   * stops complaining without waiting for another press.
+   */
+  const [hasBeenRefused, setHasBeenRefused] = useState(false);
+
+  /**
+   * Derived, never stored. Keeping a copy would mean two answers to "what is
+   * wrong with this shelf" — the list of rows and the list of complaints about
+   * it — kept in step by hand, and they come apart precisely when a batched
+   * update lands between the two writes: a message left on a field that was
+   * just corrected, or gone from one that was not.
+   */
+  const problems = hasBeenRefused ? problemsWith(form.products) : NOTHING_WRONG;
+
+  /** New rows have no selector to be identified by, so they are numbered. */
+  const rowsTakenOn = useRef(0);
+
   const open = () => {
     setForm(seedForm(products, changeReserve, supportedCoins));
+    setHasBeenRefused(false);
     setIsOpen(true);
   };
 
@@ -102,10 +130,16 @@ export default function ServiceDrawer({
     panel?.focus();
   }, []);
 
-  // Rows are addressed by their own identity rather than by where they sit,
-  // because a shelf can lose one. Keyed by position, removing a row leaves the
-  // fields in place and slides every value below it up by one — the kind of bug
-  // that looks like the form ignoring what was typed.
+  const setProducts = (next) => {
+    setForm((current) => ({ ...current, products: next(current.products) }));
+  };
+
+  /**
+   * Rows are addressed by their own identity rather than by where they sit,
+   * because a shelf can lose one. Keyed by position, removing a row leaves the
+   * fields in place and slides every value below it up by one — the kind of bug
+   * that looks like the form ignoring what was typed.
+   */
   const update = (kind, id, change) => {
     setForm((current) => ({
       ...current,
@@ -113,18 +147,44 @@ export default function ServiceDrawer({
     }));
   };
 
+  const addProduct = () => {
+    rowsTakenOn.current += 1;
+
+    setProducts((rows) => [...rows, blankProduct(`new-${rowsTakenOn.current}`)]);
+  };
+
   // There is no endpoint for this and there does not need to be one: a service
   // visit states the catalogue, so a product left out of the body is a product
   // the machine stops stocking.
   const removeProduct = (id) => {
-    setForm((current) => ({
-      ...current,
-      products: current.products.filter((row) => row.id !== id),
-    }));
+    setProducts((rows) => rows.filter((row) => row.id !== id));
   };
 
   const submit = (event) => {
     event.preventDefault();
+
+    const found = problemsWith(form.products);
+    const refused = Object.keys(found).length > 0;
+
+    setHasBeenRefused(refused);
+
+    if (refused) {
+      /*
+       * The visit is not attempted at all, so nothing typed into the other rows
+       * is lost to a refusal of the whole body — and the cursor lands on the
+       * field that stopped it, in the order they appear on screen, so pressing
+       * Apply never looks like it did nothing. The element is looked up rather
+       * than kept in a ref because the fields belong to the rows: one ref per
+       * field, threaded through a component whose job is a row, would be more
+       * machinery than the one question being asked of the DOM.
+       */
+      const [firstBadRow] = form.products.filter((row) => found[row.id]);
+      const field = FIELDS.find((name) => found[firstBadRow.id][name]);
+
+      document.getElementById(`${firstBadRow.id}-${field}`)?.focus();
+
+      return;
+    }
 
     onService(
       form.products.map(({ selector, name, price, count }) => ({
@@ -176,7 +236,16 @@ export default function ServiceDrawer({
           role="dialog"
           tabIndex={-1}
         >
-          <form className="service__form" onSubmit={submit}>
+          {/*
+            `noValidate` hands the checking to this form rather than to the
+            browser, and it is a choice with a reason: a blank row starts life
+            with empty fields, and native validation would refuse the submit
+            before this component ever ran — silently, with a bubble that no
+            screen reader announces the way a described field is announced, and
+            that no test at this level can read. One gate, ours, so every
+            refusal is said the same way in the same place.
+          */}
+          <form className="service__form" noValidate onSubmit={submit}>
             <fieldset className="service__group" disabled={disabled}>
               <legend>Slots</legend>
               <ul className="service__rows">
@@ -185,10 +254,20 @@ export default function ServiceDrawer({
                     key={product.id}
                     onChange={(change) => update('products', product.id, change)}
                     onRemove={() => removeProduct(product.id)}
+                    problems={problems[product.id]}
                     product={product}
                   />
                 ))}
               </ul>
+
+              {/*
+                Inside the fieldset, so it locks with everything else while the
+                machine is answering: a row added to a form that is mid-flight
+                would be a row the answer knows nothing about.
+              */}
+              <button className="service__add" onClick={addProduct} type="button">
+                Add product
+              </button>
             </fieldset>
 
             <fieldset className="service__group" disabled={disabled}>
