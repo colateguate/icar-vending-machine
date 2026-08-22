@@ -242,6 +242,7 @@ describe('MachinePage', () => {
     expect(slot.getAllByRole('button')).toHaveLength(4);
 
     await user.click(screen.getByRole('button', { name: 'Service' }));
+    await user.click(screen.getByRole('tab', { name: 'Coins' }));
 
     expect(screen.getAllByRole('checkbox')).toHaveLength(6);
   });
@@ -256,6 +257,7 @@ describe('MachinePage', () => {
     const user = userEvent.setup();
 
     await user.click(screen.getByRole('button', { name: 'Service' }));
+    await user.click(screen.getByRole('tab', { name: 'Coins' }));
     await user.click(screen.getByRole('checkbox', { name: '0.50 — accepted' }));
     await user.click(screen.getByRole('button', { name: 'Apply' }));
 
@@ -339,6 +341,7 @@ describe('MachinePage', () => {
       await openTheOffPanel();
 
       await user.click(screen.getByRole('button', { name: 'Service' }));
+      await user.click(screen.getByRole('tab', { name: 'Coins' }));
 
       expect(screen.getByRole('dialog', { name: 'Service' })).toBeVisible();
       expect(screen.getByRole('checkbox', { name: '0.25 — accepted' })).toBeEnabled();

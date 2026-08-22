@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import CoinSwitch from './CoinSwitch';
-import CountField from './CountField';
-import ProductRow from './ProductRow';
+import ShelfPanel from './ShelfPanel';
+import TillPanel from './TillPanel';
 import { problemsWith } from './productRules';
-import { blankProduct, seedForm } from './serviceForm';
+import { blankProduct, seedForm, toServicePayload } from './serviceForm';
 
 // The whole `service` block, rows included. CountField renders elements of this
 // block rather than a block of its own, so it imports no stylesheet.
@@ -34,23 +33,8 @@ const FIELDS = ['selector', 'name', 'price', 'count'];
 /** One object, so an untouched form does not hand its rows a new one a render. */
 const NOTHING_WRONG = {};
 
-/**
- * What is worth saying about a till row beyond its number, and only where it is
- * not obvious. A denomination the machine has stopped taking is the important
- * one: the coins are still in there, they count towards nothing, and the person
- * holding the drawer open is the one who has to decide what to do about them.
- */
-const noteFor = ({ accepted, dispensableAsChange }) => {
-  if (!accepted) {
-    return 'Not taken at the slot. Coins left inside stay inside — they are never given back as change.';
-  }
-
-  if (!dispensableAsChange) {
-    return 'Never given back as change, so loading it will not turn the lamp off.';
-  }
-
-  return undefined;
-};
+/** The two halves of a service visit. Their order is the order of the tabs. */
+const TABS = ['Products', 'Coins'];
 
 export default function ServiceDrawer({
   products,
@@ -61,6 +45,7 @@ export default function ServiceDrawer({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [form, setForm] = useState(EMPTY);
+  const [tab, setTab] = useState(TABS[0]);
   const triggerRef = useRef(null);
 
   /**
@@ -86,6 +71,7 @@ export default function ServiceDrawer({
   const open = () => {
     setForm(seedForm(products, changeReserve, supportedCoins));
     setHasBeenRefused(false);
+    setTab(TABS[0]);
     setIsOpen(true);
   };
 
@@ -130,6 +116,38 @@ export default function ServiceDrawer({
     panel?.focus();
   }, []);
 
+  /**
+   * The id of a field to focus once it exists. A refusal can point at a field
+   * on a tab that is not showing, and an element that is not mounted cannot be
+   * focused — so the submit switches the tab and leaves the id here, and this
+   * effect runs after the panel has rendered, when the field is real.
+   */
+  const focusAfterRender = useRef(null);
+
+  useEffect(() => {
+    if (focusAfterRender.current) {
+      document.getElementById(focusAfterRender.current)?.focus();
+      focusAfterRender.current = null;
+    }
+  });
+
+  /**
+   * The keyboard half of the tab strip: arrows move and select in one motion,
+   * which is the pattern every native tab strip follows. Focus follows
+   * selection so a screen reader announces the tab it lands on.
+   */
+  const onTabArrow = (event) => {
+    if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') {
+      return;
+    }
+
+    const at = TABS.indexOf(tab);
+    const to = TABS[(at + (event.key === 'ArrowRight' ? 1 : TABS.length - 1)) % TABS.length];
+
+    setTab(to);
+    document.getElementById(`service-tab-${to}`)?.focus();
+  };
+
   const setProducts = (next) => {
     setForm((current) => ({ ...current, products: next(current.products) }));
   };
@@ -172,39 +190,24 @@ export default function ServiceDrawer({
       /*
        * The visit is not attempted at all, so nothing typed into the other rows
        * is lost to a refusal of the whole body — and the cursor lands on the
-       * field that stopped it, in the order they appear on screen, so pressing
-       * Apply never looks like it did nothing. The element is looked up rather
-       * than kept in a ref because the fields belong to the rows: one ref per
-       * field, threaded through a component whose job is a row, would be more
-       * machinery than the one question being asked of the DOM.
+       * field that stopped it, so pressing Apply never looks like it did
+       * nothing. Every rule is about a product, so the field is always on the
+       * Products tab — which may not be the one on screen, and that is the trap
+       * the tabs introduced: the element does not exist until its panel is
+       * shown. Switching first and focusing by id in the ref below is what
+       * makes both orders work; the id lookup itself is the same seam the
+       * labels already need.
        */
       const [firstBadRow] = form.products.filter((row) => found[row.id]);
       const field = FIELDS.find((name) => found[firstBadRow.id][name]);
 
-      document.getElementById(`${firstBadRow.id}-${field}`)?.focus();
+      setTab('Products');
+      focusAfterRender.current = `${firstBadRow.id}-${field}`;
 
       return;
     }
 
-    onService(
-      form.products.map(({ selector, name, price, count }) => ({
-        selector,
-        name,
-        price,
-        count: Number(count),
-      })),
-      // `dispensableAsChange` and `accepted` came in on every coin and go back
-      // out on none: the request body declares additionalProperties false, so a
-      // stray field is a refusal rather than something the API quietly ignores.
-      form.coins.map(({ denomination, count }) => ({ denomination, count: Number(count) })),
-      // Which coins the machine takes travels as its own list rather than as a
-      // flag on the rows above, because the two are independent: a denomination
-      // can be in the till and not in the acceptor, which is money the machine
-      // holds and will never hand back. Always stated, never omitted — an absent
-      // list means "leave the acceptor alone" and an empty one means "take
-      // nothing", and this form always knows which it means.
-      form.coins.filter(({ accepted }) => accepted).map(({ denomination }) => denomination),
-    );
+    onService(...toServicePayload(form));
   };
 
   return (
@@ -246,52 +249,56 @@ export default function ServiceDrawer({
             refusal is said the same way in the same place.
           */}
           <form className="service__form" noValidate onSubmit={submit}>
-            <fieldset className="service__group" disabled={disabled}>
-              <legend>Slots</legend>
-              <ul className="service__rows">
-                {form.products.map((product) => (
-                  <ProductRow
-                    key={product.id}
-                    onChange={(change) => update('products', product.id, change)}
-                    onRemove={() => removeProduct(product.id)}
-                    problems={problems[product.id]}
-                    product={product}
-                  />
-                ))}
-              </ul>
+            {/*
+              What the machine sells and what it takes are two jobs that share
+              nothing but the visit, and stacked in one column they were nearly
+              two screens of scrolling with no sign of which one you were in.
+              Only the selected panel is mounted; the *form* holds the state, so
+              nothing typed into the hidden half is lost, and one Apply still
+              sends both — SERVICE states the whole machine, and an "apply the
+              coins only" would have to send the products anyway.
+            */}
+            <div aria-label="What to manage" className="service__tabs" role="tablist">
+              {TABS.map((name) => (
+                <button
+                  aria-controls={`service-panel-${name}`}
+                  aria-selected={tab === name}
+                  className="service__tab"
+                  id={`service-tab-${name}`}
+                  key={name}
+                  onClick={() => setTab(name)}
+                  onKeyDown={onTabArrow}
+                  role="tab"
+                  tabIndex={tab === name ? 0 : -1}
+                  type="button"
+                >
+                  {name}
+                </button>
+              ))}
+            </div>
 
-              {/*
-                Inside the fieldset, so it locks with everything else while the
-                machine is answering: a row added to a form that is mid-flight
-                would be a row the answer knows nothing about.
-              */}
-              <button className="service__add" onClick={addProduct} type="button">
-                Add product
-              </button>
-            </fieldset>
-
-            <fieldset className="service__group" disabled={disabled}>
-              <legend>Till</legend>
-              <ul className="service__rows">
-                {form.coins.map((coin) => (
-                  <CountField
-                    count={coin.count}
-                    id={`coins-${coin.denomination}`}
-                    key={coin.denomination}
-                    label={`${coin.denomination} — coins`}
-                    note={noteFor(coin)}
-                    onChange={(value) => update('coins', coin.id, { count: value })}
-                  >
-                    <CoinSwitch
-                      accepted={coin.accepted}
-                      denomination={coin.denomination}
-                      id={`accepts-${coin.denomination}`}
-                      onToggle={(accepted) => update('coins', coin.id, { accepted })}
-                    />
-                  </CountField>
-                ))}
-              </ul>
-            </fieldset>
+            <div
+              aria-labelledby={`service-tab-${tab}`}
+              id={`service-panel-${tab}`}
+              role="tabpanel"
+            >
+              {tab === 'Products' ? (
+                <ShelfPanel
+                  disabled={disabled}
+                  onAdd={addProduct}
+                  onChange={(id, change) => update('products', id, change)}
+                  onRemove={removeProduct}
+                  problems={problems}
+                  products={form.products}
+                />
+              ) : (
+                <TillPanel
+                  coins={form.coins}
+                  disabled={disabled}
+                  onChange={(id, change) => update('coins', id, change)}
+                />
+              )}
+            </div>
 
             <div className="service__actions">
               <button className="service__apply" disabled={disabled} type="submit">

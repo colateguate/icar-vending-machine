@@ -1,8 +1,11 @@
 /**
- * Turning what the machine reports into what the form edits, and nothing else.
+ * Turning what the machine reports into what the form edits, and the form back
+ * into what a visit sends — the two directions of one translation, and nothing
+ * else.
  * Kept apart from the component because it is the one piece of this drawer with
  * no lifecycle: given a machine, it always produces the same starting form.
  */
+
 /**
  * A row for a product the machine does not stock yet. `isNew` is what tells the
  * rest of the form that this selector is still being decided: it is editable,
@@ -58,4 +61,27 @@ export function seedForm(products, changeReserve, supportedCoins) {
       count: String(countOf(changeReserve.coins, denomination)),
     })),
   };
+}
+
+/**
+ * The three arguments a visit sends, built from the form in one place. The
+ * shapes carry the form's decisions: `dispensableAsChange` and `accepted` came
+ * in on every coin and go back out on none (the request body declares
+ * additionalProperties false); which coins the machine takes travels as its own
+ * list because a denomination can be in the till and not in the acceptor; and
+ * the list is always stated, never omitted — absent means "leave the acceptor
+ * alone", empty means "take nothing", and a form showing every denomination
+ * knows which it means.
+ */
+export function toServicePayload(form) {
+  return [
+    form.products.map(({ selector, name, price, count }) => ({
+      selector,
+      name,
+      price,
+      count: Number(count),
+    })),
+    form.coins.map(({ denomination, count }) => ({ denomination, count: Number(count) })),
+    form.coins.filter(({ accepted }) => accepted).map(({ denomination }) => denomination),
+  ];
 }

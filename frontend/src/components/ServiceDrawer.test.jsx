@@ -57,6 +57,11 @@ const open = async (user) => {
   return screen.getByRole('dialog', { name: 'Service' });
 };
 
+/** The drawer opens on Products; the coins live behind the other tab. */
+const openCoins = async (user) => {
+  await user.click(screen.getByRole('tab', { name: 'Coins' }));
+};
+
 describe('ServiceDrawer', () => {
   describe('the door', () => {
     it('is shut until someone with a key opens it', () => {
@@ -148,6 +153,111 @@ describe('ServiceDrawer', () => {
     });
   });
 
+  /**
+   * Two things are managed behind this door and they have nothing to do with
+   * each other: what the machine sells and what it takes. Stacked in one
+   * column they were nearly two screens of scrolling, and nothing on screen
+   * said which of the two you were editing.
+   */
+  describe('its two halves', () => {
+    it('opens on the products, with the coins behind their own tab', async () => {
+      const user = userEvent.setup();
+      drawer();
+      await open(user);
+
+      expect(screen.getByRole('tab', { name: 'Products' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      );
+      expect(screen.getByRole('tab', { name: 'Coins' })).toHaveAttribute('aria-selected', 'false');
+      expect(screen.getByRole('textbox', { name: 'WATER — name' })).toBeVisible();
+      expect(screen.queryByRole('checkbox', { name: '0.25 — accepted' })).toBeNull();
+    });
+
+    it('shows the coins, and only the coins, once they are asked for', async () => {
+      const user = userEvent.setup();
+      drawer();
+      await open(user);
+
+      await openCoins(user);
+
+      expect(screen.getByRole('checkbox', { name: '0.25 — accepted' })).toBeVisible();
+      expect(screen.queryByRole('textbox', { name: 'WATER — name' })).toBeNull();
+    });
+
+    /**
+     * A tab strip that only answers to a mouse is half a tab strip. The arrows
+     * are the part people who cannot use a mouse rely on, and the part nobody
+     * notices is missing until they need it.
+     */
+    it('moves between tabs with the arrow keys', async () => {
+      const user = userEvent.setup();
+      drawer();
+      await open(user);
+
+      await user.click(screen.getByRole('tab', { name: 'Products' }));
+      await user.keyboard('{ArrowRight}');
+
+      expect(screen.getByRole('tab', { name: 'Coins' })).toHaveAttribute('aria-selected', 'true');
+      expect(screen.getByRole('tab', { name: 'Coins' })).toHaveFocus();
+
+      await user.keyboard('{ArrowLeft}');
+
+      expect(screen.getByRole('tab', { name: 'Products' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      );
+      expect(screen.getByRole('tab', { name: 'Products' })).toHaveFocus();
+    });
+
+    /**
+     * One Apply for both halves, because SERVICE states the whole machine: an
+     * "apply the coins only" would have to send the products anyway, so two
+     * buttons would be two lies about what they do. The test proves the hidden
+     * half still travels — the form holds the state, not the DOM.
+     */
+    it('sends both halves from one Apply, including the one not on screen', async () => {
+      const onService = vi.fn();
+      const user = userEvent.setup();
+      drawer({ onService });
+      await open(user);
+
+      await openCoins(user);
+      await user.click(screen.getByRole('checkbox', { name: '0.50 — accepted' }));
+      await user.click(screen.getByRole('button', { name: 'Apply' }));
+
+      const [sentProducts, , sentAcceptor] = onService.mock.calls[0];
+
+      expect(sentProducts).toHaveLength(2);
+      expect(sentAcceptor).toContain('0.50');
+    });
+
+    /**
+     * The trap this tab strip introduces, and the reason the focus code had to
+     * change: the field that stopped the visit can be on the half nobody is
+     * looking at. Refusing without showing why is the exact failure the
+     * validation was written to prevent, and hiding the field brings it back.
+     */
+    it('shows the half that stopped the visit, and puts the cursor in it', async () => {
+      const onService = vi.fn();
+      const user = userEvent.setup();
+      drawer({ onService });
+      await open(user);
+
+      await user.clear(screen.getByRole('textbox', { name: 'WATER — price' }));
+      await user.type(screen.getByRole('textbox', { name: 'WATER — price' }), 'free');
+      await openCoins(user);
+      await user.click(screen.getByRole('button', { name: 'Apply' }));
+
+      expect(onService).not.toHaveBeenCalled();
+      expect(screen.getByRole('tab', { name: 'Products' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      );
+      expect(screen.getByRole('textbox', { name: 'WATER — price' })).toHaveFocus();
+    });
+  });
+
   describe('what it shows', () => {
     it('offers one field per product, seeded with what the slot holds', async () => {
       const user = userEvent.setup();
@@ -216,6 +326,7 @@ describe('ServiceDrawer', () => {
       const user = userEvent.setup();
       drawer();
       await open(user);
+      await openCoins(user);
 
       expect(screen.getByRole('spinbutton', { name: /^0\.05/ })).toHaveValue(8);
       expect(screen.getByRole('spinbutton', { name: /^0\.10/ })).toHaveValue(0);
@@ -229,6 +340,7 @@ describe('ServiceDrawer', () => {
       const user = userEvent.setup();
       drawer();
       await open(user);
+      await openCoins(user);
 
       expect(screen.getByRole('checkbox', { name: '0.25 — accepted' })).toBeChecked();
       expect(screen.getByRole('checkbox', { name: '0.50 — accepted' })).not.toBeChecked();
@@ -244,6 +356,7 @@ describe('ServiceDrawer', () => {
       const user = userEvent.setup();
       drawer();
       await open(user);
+      await openCoins(user);
 
       expect(screen.getByRole('spinbutton', { name: /^1\.00/ })).toHaveAccessibleDescription(
         /never given back as change/i,
@@ -261,6 +374,7 @@ describe('ServiceDrawer', () => {
       const user = userEvent.setup();
       drawer();
       await open(user);
+      await openCoins(user);
 
       expect(screen.getByRole('spinbutton', { name: /^0\.50/ })).toHaveAccessibleDescription(
         /not taken at the slot/i,
@@ -402,6 +516,7 @@ describe('ServiceDrawer', () => {
       const user = userEvent.setup();
       drawer({ onService });
       await open(user);
+      await openCoins(user);
 
       await user.clear(screen.getByRole('spinbutton', { name: /^0\.10/ }));
       await user.type(screen.getByRole('spinbutton', { name: /^0\.10/ }), '20');
@@ -479,6 +594,7 @@ describe('ServiceDrawer', () => {
       const user = userEvent.setup();
       drawer({ onService });
       await open(user);
+      await openCoins(user);
 
       await user.click(screen.getByRole('checkbox', { name: '0.50 — accepted' }));
       await user.click(screen.getByRole('button', { name: 'Apply' }));
@@ -499,6 +615,7 @@ describe('ServiceDrawer', () => {
       const user = userEvent.setup();
       drawer({ onService });
       await open(user);
+      await openCoins(user);
 
       for (const denomination of ['0.05', '0.10', '0.25', '1.00']) {
         await user.click(screen.getByRole('checkbox', { name: `${denomination} — accepted` }));
@@ -522,6 +639,7 @@ describe('ServiceDrawer', () => {
       const user = userEvent.setup();
       drawer({ onService });
       await open(user);
+      await openCoins(user);
 
       await user.click(screen.getByRole('checkbox', { name: '0.05 — accepted' }));
       await user.click(screen.getByRole('button', { name: 'Apply' }));
@@ -537,6 +655,7 @@ describe('ServiceDrawer', () => {
       const user = userEvent.setup();
       drawer({ onService });
       await open(user);
+      await openCoins(user);
 
       await user.clear(screen.getByRole('spinbutton', { name: /^0\.50/ }));
       await user.type(screen.getByRole('spinbutton', { name: /^0\.50/ }), '0');
@@ -750,6 +869,9 @@ describe('ServiceDrawer', () => {
       expect(onService).not.toHaveBeenCalled();
       expect(screen.getByRole('button', { name: 'Apply' })).toBeDisabled();
       expect(screen.getByRole('spinbutton', { name: /WATER/ })).toBeDisabled();
+
+      await openCoins(user);
+
       expect(screen.getByRole('checkbox', { name: '0.25 — accepted' })).toBeDisabled();
     });
   });
