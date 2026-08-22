@@ -19,8 +19,19 @@ const countOf = (coins, denomination) =>
  */
 export function seedForm(products, changeReserve, supportedCoins) {
   return {
-    products: products.map((product) => ({ ...product, count: String(product.count) })),
+    // Every row carries an `id`, and it is what the form edits and removes by.
+    // A position works right up until a row can disappear, and then it stops
+    // working quietly: the fields stay where they are and the values slide up
+    // one. For a product already on the shelf the selector is that identity —
+    // it is what the machine calls it.
+    products: products.map((product) => ({
+      ...product,
+      id: product.selector,
+      price: String(product.price),
+      count: String(product.count),
+    })),
     coins: supportedCoins.map(({ denomination, dispensableAsChange, enabled }) => ({
+      id: denomination,
       denomination,
       dispensableAsChange,
       // The one rename in this file, and it happens here so it happens once:

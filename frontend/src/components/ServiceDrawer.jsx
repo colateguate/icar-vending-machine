@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import CoinSwitch from './CoinSwitch';
 import CountField from './CountField';
+import ProductRow from './ProductRow';
 import { seedForm } from './serviceForm';
 
 // The whole `service` block, rows included. CountField renders elements of this
@@ -101,10 +102,24 @@ export default function ServiceDrawer({
     panel?.focus();
   }, []);
 
-  const update = (kind, index, change) => {
+  // Rows are addressed by their own identity rather than by where they sit,
+  // because a shelf can lose one. Keyed by position, removing a row leaves the
+  // fields in place and slides every value below it up by one — the kind of bug
+  // that looks like the form ignoring what was typed.
+  const update = (kind, id, change) => {
     setForm((current) => ({
       ...current,
-      [kind]: current[kind].map((row, at) => (at === index ? { ...row, ...change } : row)),
+      [kind]: current[kind].map((row) => (row.id === id ? { ...row, ...change } : row)),
+    }));
+  };
+
+  // There is no endpoint for this and there does not need to be one: a service
+  // visit states the catalogue, so a product left out of the body is a product
+  // the machine stops stocking.
+  const removeProduct = (id) => {
+    setForm((current) => ({
+      ...current,
+      products: current.products.filter((row) => row.id !== id),
     }));
   };
 
@@ -165,13 +180,12 @@ export default function ServiceDrawer({
             <fieldset className="service__group" disabled={disabled}>
               <legend>Slots</legend>
               <ul className="service__rows">
-                {form.products.map(({ selector, name, price, count }, index) => (
-                  <CountField
-                    count={count}
-                    id={`stock-${selector}`}
-                    key={selector}
-                    label={`${selector} · ${name} · ${price} — units`}
-                    onChange={(value) => update('products', index, { count: value })}
+                {form.products.map((product) => (
+                  <ProductRow
+                    key={product.id}
+                    onChange={(change) => update('products', product.id, change)}
+                    onRemove={() => removeProduct(product.id)}
+                    product={product}
                   />
                 ))}
               </ul>
@@ -180,20 +194,20 @@ export default function ServiceDrawer({
             <fieldset className="service__group" disabled={disabled}>
               <legend>Till</legend>
               <ul className="service__rows">
-                {form.coins.map((coin, index) => (
+                {form.coins.map((coin) => (
                   <CountField
                     count={coin.count}
                     id={`coins-${coin.denomination}`}
                     key={coin.denomination}
                     label={`${coin.denomination} — coins`}
                     note={noteFor(coin)}
-                    onChange={(value) => update('coins', index, { count: value })}
+                    onChange={(value) => update('coins', coin.id, { count: value })}
                   >
                     <CoinSwitch
                       accepted={coin.accepted}
                       denomination={coin.denomination}
                       id={`accepts-${coin.denomination}`}
-                      onToggle={(accepted) => update('coins', index, { accepted })}
+                      onToggle={(accepted) => update('coins', coin.id, { accepted })}
                     />
                   </CountField>
                 ))}

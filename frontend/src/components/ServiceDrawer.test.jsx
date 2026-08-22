@@ -159,6 +159,52 @@ describe('ServiceDrawer', () => {
     });
 
     /**
+     * A service visit states the catalogue rather than adding to it, so a
+     * technician correcting a price or a name is doing the thing the endpoint
+     * was built for. Printed as a sentence, as they were, those two were the
+     * only facts on this form nobody could change.
+     */
+    it('offers the name and the price of each product as fields, not as a sentence', async () => {
+      const user = userEvent.setup();
+      drawer();
+      await open(user);
+
+      expect(screen.getByRole('textbox', { name: 'WATER — name' })).toHaveValue('Water');
+      expect(screen.getByRole('textbox', { name: 'WATER — price' })).toHaveValue('0.65');
+    });
+
+    /**
+     * The price is a text field on purpose, and this is the assertion that
+     * pins it. `type="number"` would make the browser the first thing to touch
+     * an amount — normalising the separator by locale and accepting `1e21` —
+     * and JavaScript only offers the float ADR-0004 refuses. Units are integers
+     * and stay a spinbutton; money is a decimal string all the way to the DOM.
+     */
+    it('asks for the price as text, because an amount is not a number here', async () => {
+      const user = userEvent.setup();
+      drawer();
+      await open(user);
+
+      expect(screen.queryByRole('spinbutton', { name: 'WATER — price' })).toBeNull();
+      expect(screen.getByRole('textbox', { name: 'WATER — price' })).toBeVisible();
+    });
+
+    /**
+     * The selector is the identity of the row, not a field of it: changing it
+     * would not rename a product, it would swap one product for another and
+     * silently discontinue the first. Editing it is what the *new* rows of the
+     * next ticket are for.
+     */
+    it('does not let the selector of an existing product be edited', async () => {
+      const user = userEvent.setup();
+      drawer();
+      await open(user);
+
+      expect(screen.queryByRole('textbox', { name: /WATER — selector/ })).toBeNull();
+      expect(screen.getByRole('button', { name: 'Remove WATER' })).toBeVisible();
+    });
+
+    /**
      * The denomination the till ran out of is the whole reason to open this
      * drawer — it is the one that lit the EXACT CHANGE ONLY lamp. A form that
      * rendered only what `changeReserve` returned could never refill it, because
@@ -228,7 +274,7 @@ describe('ServiceDrawer', () => {
      * whatever is left out of the body leaves the machine. Sending only the
      * counts would reprovision the catalogue with no names and no prices.
      */
-    it('sends back the names and prices it was given, untouched', async () => {
+    it('states every product whole, not just the counts it was asked about', async () => {
       const onService = vi.fn();
       const user = userEvent.setup();
       drawer({ onService });
@@ -244,6 +290,111 @@ describe('ServiceDrawer', () => {
         { selector: 'WATER', name: 'Water', price: '0.65', count: 12 },
         { selector: 'JUICE', name: 'Orange juice', price: '1.00', count: 0 },
       ]);
+    });
+
+    /**
+     * The price makes the whole round trip as the string that was typed. Not
+     * `0.7`, not `0.70000000000000004`: the panel never asks JavaScript what
+     * this amount is worth, because the only answer it has is a float
+     * (ADR-0004).
+     */
+    it('sends a corrected price as the string it was typed as', async () => {
+      const onService = vi.fn();
+      const user = userEvent.setup();
+      drawer({ onService });
+      await open(user);
+
+      await user.clear(screen.getByRole('textbox', { name: 'WATER — price' }));
+      await user.type(screen.getByRole('textbox', { name: 'WATER — price' }), '0.70');
+      await user.click(screen.getByRole('button', { name: 'Apply' }));
+
+      const [sentProducts] = onService.mock.calls[0];
+
+      expect(sentProducts[0].price).toBe('0.70');
+    });
+
+    it('sends a corrected name', async () => {
+      const onService = vi.fn();
+      const user = userEvent.setup();
+      drawer({ onService });
+      await open(user);
+
+      await user.clear(screen.getByRole('textbox', { name: 'WATER — name' }));
+      await user.type(screen.getByRole('textbox', { name: 'WATER — name' }), 'Still Water');
+      await user.click(screen.getByRole('button', { name: 'Apply' }));
+
+      const [sentProducts] = onService.mock.calls[0];
+
+      expect(sentProducts[0]).toEqual({
+        selector: 'WATER',
+        name: 'Still Water',
+        price: '0.65',
+        count: 5,
+      });
+    });
+
+    /**
+     * Taking a product off the shelf is saying nothing about it: a PUT states
+     * the catalogue, so what is left out is discontinued. There is no delete
+     * endpoint and there does not need to be one.
+     */
+    it('discontinues a product by leaving it out', async () => {
+      const onService = vi.fn();
+      const user = userEvent.setup();
+      drawer({ onService });
+      await open(user);
+
+      await user.click(screen.getByRole('button', { name: 'Remove WATER' }));
+      await user.click(screen.getByRole('button', { name: 'Apply' }));
+
+      const [sentProducts] = onService.mock.calls[0];
+
+      expect(sentProducts).toEqual([
+        { selector: 'JUICE', name: 'Orange juice', price: '1.00', count: 0 },
+      ]);
+    });
+
+    /**
+     * The row that goes is the row that was asked for, and its neighbours keep
+     * what was typed into them. A form keyed by position loses that the moment
+     * anything is removed: the fields stay put and the values slide up a row.
+     */
+    it('keeps what was typed into the rows it did not remove', async () => {
+      const onService = vi.fn();
+      const user = userEvent.setup();
+      drawer({ onService });
+      await open(user);
+
+      await user.clear(screen.getByRole('textbox', { name: 'JUICE — name' }));
+      await user.type(screen.getByRole('textbox', { name: 'JUICE — name' }), 'Apple juice');
+      await user.click(screen.getByRole('button', { name: 'Remove WATER' }));
+      await user.click(screen.getByRole('button', { name: 'Apply' }));
+
+      const [sentProducts] = onService.mock.calls[0];
+
+      expect(sentProducts).toEqual([
+        { selector: 'JUICE', name: 'Apple juice', price: '1.00', count: 0 },
+      ]);
+    });
+
+    /**
+     * An empty shelf is a legal thing to ask for — the same technician who can
+     * empty the till can retire the last product — and it is the one case where
+     * "send nothing" and "send an empty list" would look alike from here.
+     */
+    it('can empty the shelf entirely', async () => {
+      const onService = vi.fn();
+      const user = userEvent.setup();
+      drawer({ onService });
+      await open(user);
+
+      await user.click(screen.getByRole('button', { name: 'Remove WATER' }));
+      await user.click(screen.getByRole('button', { name: 'Remove JUICE' }));
+      await user.click(screen.getByRole('button', { name: 'Apply' }));
+
+      const [sentProducts] = onService.mock.calls[0];
+
+      expect(sentProducts).toEqual([]);
     });
 
     it('can load a denomination the till had none of, from zero', async () => {
