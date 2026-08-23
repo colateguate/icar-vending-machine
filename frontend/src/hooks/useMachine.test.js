@@ -188,13 +188,14 @@ describe('useMachine', () => {
     const serviced = { ...idle, products: [{ selector: 'TEA', name: 'Tea', price: '0.80', count: 4 }] };
     const products = [{ selector: 'TEA', name: 'Tea', price: '0.80', count: 4 }];
     const changeReserve = [{ denomination: '0.25', count: 2 }];
+    const acceptedCoins = ['0.25', '1.00'];
     service.mockResolvedValue({ machine: serviced });
 
     await act(async () => {
-      await result.current.service(products, changeReserve);
+      await result.current.service(products, changeReserve, acceptedCoins);
     });
 
-    expect(service).toHaveBeenCalledWith(products, changeReserve);
+    expect(service).toHaveBeenCalledWith(products, changeReserve, acceptedCoins);
     expect(result.current.machine).toEqual(serviced);
     expect(result.current.tray).toBeNull();
     expect(getState).toHaveBeenCalledTimes(1);

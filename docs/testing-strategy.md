@@ -10,16 +10,16 @@ A test's level is decided by **the question it answers**, never by the machinery
 
 | Suite | Tests | Boots kernel | Repository | Answers |
 |---|---:|---|---|---|
-| `unit` | 289 | no | none — the aggregate is built directly | Are the business rules correct? |
-| `application` | 38 | no | in-memory | Does the use case orchestrate correctly? |
-| `integration` | 43 | yes | Doctrine + real SQLite | Does the adapter honour the port? |
-| `acceptance` | 108 | yes | Doctrine + real SQLite | Does it work end to end, error contract included? |
-| **total** | **478** | | | 3 335 assertions |
+| `unit` | 318 | no | none — the aggregate is built directly | Are the business rules correct? |
+| `application` | 45 | no | in-memory | Does the use case orchestrate correctly? |
+| `integration` | 53 | yes | Doctrine + real SQLite | Does the adapter honour the port? |
+| `acceptance` | 133 | yes | Doctrine + real SQLite | Does it work end to end, error contract included? |
+| **total** | **549** | | | 3 700 assertions |
 
 Run one at a time — `make test-unit` is the fast loop, and it is fast because it touches nothing:
 
 ```bash
-make test-unit         # 289 tests, no kernel, no database, no network
+make test-unit         # 318 tests, no kernel, no database, no network
 make test-application
 make test-integration
 make test-acceptance
@@ -54,13 +54,15 @@ This is the answer to "how do you know your in-memory double isn't lying?".
 
 ## The published contract, used as an assertion
 
-Three gates keep `docs/openapi.yaml` from drifting away from the API, and each exists because the one before it cannot see something.
+Four gates keep `docs/openapi.yaml` from drifting away from the API, and each exists because the one before it cannot see something.
 
-**Every response is checked against the document.** `ApiTestCase` validates what it gets — status declared, content type offered, body satisfying the schema — which is a hundred and fourteen responses and no new HTTP calls.
+**Every response is checked against the document.** `ApiTestCase` validates what it gets — status declared, content type offered, body satisfying the schema — which is a hundred and forty-seven responses and no new HTTP calls.
 
 **Every catalogued failure must be documented.** `OpenApiErrorCoverageTest` walks the error catalog against the document in both directions, because the first gate can only check the failures the suite happens to provoke — and what a suite provokes is a choice rather than a given. `concurrent_modification` was the standing example of a failure it never provoked, until a test swapped the repository port for one that loses every race.
 
-**Every published example must be a response this API gives.** The first gate validates against the *schema*, and an invented example satisfies a schema exactly as well as a real one; the second reads only `status` and `code` out of the examples, two of their five members. So `PublishedExamplesTest` provokes the exact situation each of the fifteen examples describes and asserts the whole document came back. Its list is derived from the document and its scenarios are written by hand — an example nobody wrote a scenario for fails naming itself, because a gate that can be widened in silence is not a gate.
+**Every published error example must be a response this API gives.** The first gate validates against the *schema*, and an invented example satisfies a schema exactly as well as a real one; the second reads only `status` and `code` out of the examples, two of their five members. So `PublishedExamplesTest` provokes the exact situation each of the sixteen problem examples describes and asserts the whole document came back. Its list is derived from the document and its scenarios are written by hand — an example nobody wrote a scenario for fails naming itself, because a gate that can be widened in silence is not a gate.
+
+**And every success example too.** The three gates above shared a blind spot, and it was not theoretical: the first validates only the responses the suite *produces*, the second reads the error catalogue, and the third's collector filtered by problem+json — so when the state gained two new required fields, all five success examples went invalid against their own schema and the suite stayed green. They were caught by hand. `PublishedSuccessExamplesTest` closes it with the same construction, one scenario per example, and a higher bar than schema validity comes free with it: an example that equals a real response has already passed the schema on the way back, and a plausible-but-false one — a miscounted reserve, a wrong `dispensableAsChange` — fails the build naming itself.
 
 Why a written document with a test rather than one generated from the code — and why not a Postman collection — is [ADR-0015](adr/0015-openapi-as-a-tested-contract.md). What belongs here is whether the gate works.
 
@@ -87,8 +89,8 @@ Line coverage tells you which code **ran**. It cannot tell you whether anything 
 Current state over `Domain/` + `Application/`:
 
 ```
-309 mutants generated · 0 escaped · 0 uncovered
-302 killed · 1 fatal error · 6 timed out
+333 mutants generated · 0 escaped · 0 uncovered
+326 killed · 1 fatal error · 6 timed out
 MSI 100% · Covered Code MSI 100%
 ```
 
@@ -98,7 +100,7 @@ The gate is `minMsi: 85`. It is scoped to the business core on purpose: mutating
 
 **It found a real bug at 100% line coverage.** In `CoinCollection::add()`, Infection changed `?? 0` to `?? -1` and every test still passed — because the tests only ever added a coin to a collection that already had that denomination, so the null branch never ran. With the mutation, adding the *first* coin of a denomination produced a count of zero, which the canonical form drops, which empties the collection. A real defect, invisible to coverage.
 
-**And it forced a rule about silence.** The change algorithm left fourteen mutants that no test could kill, because with the coin set `{5, 10, 25}` the number of coins is monotone and any rule that lets a later candidate win produces an identical selection. That was not assumed — each of the fourteen was implemented in isolation and run against an exhaustive oracle over ~2 300 payable reserves, with zero discrepancies. They are suppressed in `infection.json5`, narrowly, with the evidence beside them and an expiry condition: *add a non-canonical denomination and delete these entries, because then they become killable*.
+**And it forced a rule about silence.** The change algorithm left fourteen mutants that no test could kill, because with the coin set `{5, 10, 25}` the number of coins is monotone and any rule that lets a later candidate win produces an identical selection. That was not assumed — each of the fourteen was implemented in isolation and run against an exhaustive oracle over ~2 300 payable reserves, with zero discrepancies. They are suppressed in `infection.json5`, narrowly, with the evidence beside them and an expiry condition: *add a non-canonical denomination and delete these entries, because then they become killable*. The condition was tested the day 0.50 joined the dispensable set: {5, 10, 25, 50} is the 1-2-5 series scaled, still canonical, and the measurement was repeated rather than argued — entries removed, Infection run, the same mutants escaped, entries restored.
 
 The rule that came out of it:
 
@@ -123,7 +125,7 @@ The frontend is a thin client with no business logic, so its levels answer small
 
 Two rules do most of the work. **The mock seam is the module**, never `global.fetch` — `services/` is the boundary between the panel and the contract, so mocking it is mocking the port, which is the doctrine the backend already applies. `fetch` is stubbed in exactly one file, the one that has to prove the translation from a problem document into an error object. And **queries go by role and accessible name**, never by test id where a role exists: if a control cannot be found by its name, the markup is the finding.
 
-The third level is the one that needed a bar, because it is the one that rots. jsdom applies no stylesheet, performs no layout and has no accessibility tree, so an entire class of regression is invisible to the two levels above it — a decorative overlay that swallows clicks, a `text-transform` that renames a control in the accessibility tree, an nginx directive that stops forwarding `/api`. Those are what `frontend/e2e/` is for, and the rule for what may join them is written where they live ([`frontend/e2e/README.md`](../frontend/e2e/README.md)): only what **needs** a browser or the real image, because anything Vitest can answer is a slow test for no reason. Five specs, and every one of them was watched failing before it was kept ([ADR-0017](adr/0017-browser-smoke-for-what-jsdom-cannot-see.md)).
+The third level is the one that needed a bar, because it is the one that rots. jsdom applies no stylesheet, performs no layout and has no accessibility tree, so an entire class of regression is invisible to the two levels above it — a decorative overlay that swallows clicks, a `text-transform` that renames a control in the accessibility tree, an nginx directive that stops forwarding `/api`. Those are what `frontend/e2e/` is for, and the rule for what may join them is written where they live ([`frontend/e2e/README.md`](../frontend/e2e/README.md)): only what **needs** a browser or the real image, because anything Vitest can answer is a slow test for no reason. Seven specs, and every one of them was watched failing before it was kept ([ADR-0017](adr/0017-browser-smoke-for-what-jsdom-cannot-see.md)).
 
 **There is no mutation gate and no coverage threshold on this half**, and that is a scoping decision rather than an oversight: the evaluated suite is the backend's, and MSI on a component that renders a string it was handed would measure the test framework.
 

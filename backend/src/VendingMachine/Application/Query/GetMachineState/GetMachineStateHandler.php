@@ -23,13 +23,20 @@ final readonly class GetMachineStateHandler implements QueryHandler
             $machine->changeReserve(),
             $machine->insertedCoins(),
             $machine->insertedAmount(),
-            // Read off the enum rather than asked of the aggregate, because the
-            // aggregate does not know it: which coins the slot takes is a fact
-            // about this machine model, not about this machine's contents. A
-            // pass-through method on the aggregate would only make it look like
-            // state that could differ between instances.
+            // Which coins this machine takes — its own state, and narrower than
+            // what the acceptor can read whenever a technician has switched a
+            // denomination off. It used to be read off the enum, back when
+            // every machine took everything; asking the aggregate is what makes
+            // the answer true per machine.
+            $machine->acceptedCoins()->all(),
+            // And what the acceptor could read if it were told to. This one is
+            // read off the enum, because it is a fact about the hardware rather
+            // than about this machine — the only place in the read model where
+            // that distinction is visible, and the reason the enum survived
+            // becoming configuration.
             CoinDenomination::cases(),
             $machine->requiresExactChange(),
+            $machine->isOutOfService(),
         );
     }
 }

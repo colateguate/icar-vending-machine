@@ -23,10 +23,17 @@ final readonly class ProvisionMachineCommand implements Command
     /**
      * @param list<array{selector: string, name: string, price: string, count: int}> $products
      * @param array<int, int>                                                        $changeReserve denomination in cents => how many
+     * @param list<int>                                                              $acceptedCoins denominations in cents the machine
+     *                                                                                              is installed taking. Required, not
+     *                                                                                              defaulted: which coins a machine
+     *                                                                                              takes is a fact about the one being
+     *                                                                                              installed, and the domain has no
+     *                                                                                              opinion on it
      */
     public function __construct(
         public array $products,
         public array $changeReserve,
+        public array $acceptedCoins,
     ) {
     }
 }

@@ -97,6 +97,7 @@ final class PublishedExamplesTest extends ApiTestCase
             'selectorWithASpace' => $this->provokeSelectorWithASpace(),
             'unknownProduct' => $this->provokeUnknownProduct(),
             'unsupportedCoin' => $this->provokeUnsupportedCoin(),
+            'coinNotAccepted' => $this->provokeCoinNotAccepted(),
             default => self::fail(\sprintf(
                 'docs/openapi.yaml publishes an example named "%s" and this test knows no way to provoke it. Write the scenario below, or stop publishing the example.',
                 $name,
@@ -255,5 +256,17 @@ final class PublishedExamplesTest extends ApiTestCase
         $this->givenAStockedMachine();
 
         $this->request('POST', '/api/machine/coins', ['coin' => '0.02']);
+    }
+
+    /**
+     * A coin the acceptor reads perfectly well, offered to a machine that is
+     * not taking it. The stocked machine takes the four of the brief, so the
+     * 0.50 is refused without anything having to be switched off first.
+     */
+    private function provokeCoinNotAccepted(): void
+    {
+        $this->givenAStockedMachine();
+
+        $this->request('POST', '/api/machine/coins', ['coin' => '0.50']);
     }
 }

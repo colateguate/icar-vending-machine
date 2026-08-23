@@ -25,10 +25,15 @@ final readonly class MachineStateView
 {
     /**
      * @param list<Product>          $products
-     * @param list<CoinDenomination> $acceptedCoins Which coins the slot takes,
-     *                                              smallest first. Not the same
-     *                                              question as which coins the
-     *                                              machine currently holds.
+     * @param list<CoinDenomination> $acceptedCoins  Which coins the slot takes,
+     *                                               smallest first. Not the same
+     *                                               question as which coins the
+     *                                               machine currently holds.
+     * @param list<CoinDenomination> $supportedCoins Which coins the acceptor can
+     *                                               read at all. Never narrower
+     *                                               than $acceptedCoins, and
+     *                                               wider whenever a technician
+     *                                               has switched one off.
      */
     public function __construct(
         public array $products,
@@ -36,7 +41,9 @@ final readonly class MachineStateView
         public CoinCollection $insertedCoins,
         public Money $insertedAmount,
         public array $acceptedCoins,
+        public array $supportedCoins,
         public bool $exactChangeOnly,
+        public bool $outOfService,
     ) {
     }
 }

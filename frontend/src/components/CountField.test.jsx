@@ -55,4 +55,19 @@ describe('CountField', () => {
 
     expect(screen.getByRole('spinbutton', { name: '0.25 — coins' })).toHaveAccessibleDescription('');
   });
+
+  /**
+   * Some rows carry a second control — the till's switch per denomination. It
+   * arrives as children rather than as a prop this component understands,
+   * because a row that knew what a coin switch was would be a coin row wearing
+   * the name of a number field.
+   */
+  it('makes room for another control belonging to the same row', () => {
+    field({ children: <button type="button">Something else</button> });
+
+    const row = screen.getByRole('listitem');
+
+    expect(row).toContainElement(screen.getByRole('button', { name: 'Something else' }));
+    expect(row).toContainElement(screen.getByRole('spinbutton', { name: '0.25 — coins' }));
+  });
 });

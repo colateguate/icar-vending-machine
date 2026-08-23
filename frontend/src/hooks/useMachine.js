@@ -113,8 +113,8 @@ export function useMachine() {
   // Nothing physically leaves the machine on a service visit, so unlike the
   // other two writing actions this one has no tray to fill.
   const visit = useCallback(
-    async (products, changeReserve) => {
-      await run(() => service(products, changeReserve));
+    async (products, changeReserve, acceptedCoins) => {
+      await run(() => service(products, changeReserve, acceptedCoins));
     },
     [run],
   );

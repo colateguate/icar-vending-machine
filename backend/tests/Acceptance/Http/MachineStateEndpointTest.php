@@ -41,10 +41,72 @@ final class MachineStateEndpointTest extends ApiTestCase
                     ['denomination' => '0.25', 'dispensableAsChange' => true],
                     ['denomination' => '1.00', 'dispensableAsChange' => false],
                 ],
+                'supportedCoins' => [
+                    ['denomination' => '0.05', 'dispensableAsChange' => true, 'enabled' => true],
+                    ['denomination' => '0.10', 'dispensableAsChange' => true, 'enabled' => true],
+                    ['denomination' => '0.25', 'dispensableAsChange' => true, 'enabled' => true],
+                    ['denomination' => '0.50', 'dispensableAsChange' => true, 'enabled' => false],
+                    ['denomination' => '1.00', 'dispensableAsChange' => false, 'enabled' => true],
+                    ['denomination' => '2.00', 'dispensableAsChange' => false, 'enabled' => false],
+                ],
                 'exactChangeOnly' => false,
+                'outOfService' => false,
             ],
             $this->machineState(),
         );
+    }
+
+    /**
+     * Two lists that answer two questions. `acceptedCoins` is what a customer
+     * may put in right now; `supportedCoins` is what the acceptor can read at
+     * all, and which of those this machine has switched on — the question a
+     * technician asks, and the only one that can show a coin the machine is
+     * not taking.
+     */
+    public function test_it_publishes_every_coin_the_acceptor_can_read(): void
+    {
+        $this->givenAStockedMachine();
+
+        $this->request('GET', '/api/machine');
+
+        $supported = $this->machineState()['supportedCoins'];
+        self::assertIsArray($supported);
+        self::assertSame(
+            ['0.05', '0.10', '0.25', '0.50', '1.00', '2.00'],
+            array_column($supported, 'denomination'),
+        );
+        self::assertSame(
+            ['0.05' => true, '0.10' => true, '0.25' => true, '0.50' => false, '1.00' => true, '2.00' => false],
+            array_column($supported, 'enabled', 'denomination'),
+            'the four of the brief are on, and the two the acceptor learned to read are not',
+        );
+    }
+
+    /**
+     * The published lists have to agree with each other: whatever
+     * `supportedCoins` marks enabled is exactly what `acceptedCoins` lists.
+     * Two views of one fact, and a client that cross-checks them must never
+     * find them disagreeing.
+     */
+    public function test_the_two_coin_lists_never_disagree(): void
+    {
+        $this->givenAStockedMachine();
+
+        $this->request('GET', '/api/machine');
+
+        $state = $this->machineState();
+        self::assertIsArray($state['supportedCoins']);
+        self::assertIsArray($state['acceptedCoins']);
+
+        $enabled = array_column(
+            array_filter(
+                $state['supportedCoins'],
+                static fn (mixed $coin): bool => \is_array($coin) && true === $coin['enabled'],
+            ),
+            'denomination',
+        );
+
+        self::assertSame(array_column($state['acceptedCoins'], 'denomination'), $enabled);
     }
 
     /**

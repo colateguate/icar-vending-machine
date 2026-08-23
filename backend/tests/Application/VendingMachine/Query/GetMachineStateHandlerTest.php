@@ -88,6 +88,46 @@ final class GetMachineStateHandlerTest extends TestCase
         self::assertCount(4, $view->acceptedCoins);
     }
 
+    /**
+     * The other half of the coin question, and the one the machine's own state
+     * cannot narrow: what the acceptor is able to read at all. It is the same
+     * six whether this machine takes four of them or none.
+     */
+    public function test_it_reports_every_coin_the_acceptor_can_read(): void
+    {
+        $view = self::handler(self::aRepositoryHoldingAMachine())(new GetMachineStateQuery());
+
+        self::assertSame(CoinDenomination::cases(), $view->supportedCoins);
+        self::assertCount(6, $view->supportedCoins);
+    }
+
+    public function test_the_coins_the_acceptor_reads_do_not_depend_on_the_ones_it_takes(): void
+    {
+        $off = new InMemoryVendingMachineRepository();
+        $off->save(VendingMachineBuilder::aStockedMachine()->withId(self::MACHINE_ID)->acceptingNothing()->build());
+
+        $view = self::handler($off)(new GetMachineStateQuery());
+
+        self::assertSame(CoinDenomination::cases(), $view->supportedCoins);
+        self::assertSame([], $view->acceptedCoins);
+    }
+
+    /**
+     * The lamp for the state a technician leaves behind. Both machines below
+     * are stocked and full of change: taking no coin is the only difference,
+     * and it is the one that decides the answer.
+     */
+    public function test_it_reports_whether_the_machine_is_out_of_service(): void
+    {
+        $running = self::handler(self::aRepositoryHoldingAMachine())(new GetMachineStateQuery());
+        self::assertFalse($running->outOfService);
+
+        $off = new InMemoryVendingMachineRepository();
+        $off->save(VendingMachineBuilder::aStockedMachine()->withId(self::MACHINE_ID)->acceptingNothing()->build());
+
+        self::assertTrue(self::handler($off)(new GetMachineStateQuery())->outOfService);
+    }
+
     public function test_it_reports_whether_exact_change_is_required(): void
     {
         $stocked = self::handler(self::aRepositoryHoldingAMachine())(new GetMachineStateQuery());

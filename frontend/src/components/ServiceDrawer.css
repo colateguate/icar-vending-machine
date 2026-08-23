@@ -75,7 +75,59 @@
 .service__form {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
+  /* Tighter than before on purpose: the strip and its panel are one thing. */
+  gap: 0;
+}
+
+.service__form .service__actions {
+  margin-top: var(--space-5);
+}
+
+/*
+ * The tab strip. The selected tab joins the panel below it — same background,
+ * no bottom border — because that is how a physical tab says which folder it
+ * belongs to.
+ */
+.service__tabs {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.service__tab {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  color: var(--ink-dim);
+  cursor: pointer;
+  flex: 1;
+  font-size: 0.75rem;
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.14em;
+  padding: var(--space-2) var(--space-3);
+}
+
+.service__tab[aria-selected='true'] {
+  background: rgb(0 0 0 / 20%);
+  border-color: var(--steel-700);
+  border-bottom-color: transparent;
+  color: var(--ink);
+}
+
+/*
+ * "Taken" over the switches, "In till" over the counts — said once, where six
+ * rows used to repeat "accepted" each. Hidden from the accessibility tree on
+ * purpose: every switch still carries "<coin> — accepted" in its own name, and
+ * a heading read out between rows would be noise on top of names that already
+ * say it.
+ */
+.service__till-head {
+  color: var(--ink-dim);
+  display: flex;
+  font-size: 0.6875rem;
+  font-variant-caps: all-small-caps;
+  justify-content: space-between;
+  letter-spacing: 0.14em;
+  margin: 0 0 var(--space-2);
 }
 
 .service__group {
@@ -97,7 +149,9 @@
 .service__rows {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  /* More air between rows than inside them: measured the other way round, the
+     shelf read as one mass and Remove read as belonging to nothing. */
+  gap: var(--space-4);
   list-style: none;
   margin: 0;
   padding: 0;
@@ -137,6 +191,173 @@
 .service__row input:disabled {
   cursor: not-allowed;
   opacity: 0.5;
+}
+
+/*
+ * A shelf row is five things about one product — what the machine calls it, its
+ * name, its price, how many are left, and the way to retire it — so it lays its
+ * own areas instead of borrowing the label/input pair above.
+ *
+ * It wraps onto three lines rather than laying five columns across, and that is
+ * measured rather than preferred: five columns forced the shelf fieldset to
+ * 366px inside a 367px drawer and put a horizontal scrollbar under the whole
+ * form. This drawer is a strip down the side of a cabinet, so the width it has
+ * is the width it gets.
+ */
+.service__row--product {
+  /*
+   * A card, and the border is doing work: measured before it existed, the space
+   * inside a row was twelve times the space between rows (147px of fields over
+   * a 12px gap), so three products read as one mass — and Remove, sitting level
+   * with the selector, could as easily belong to the first line as to the
+   * product. The boundary is what says what the button removes.
+   */
+  background: rgb(255 255 255 / 3%);
+  border: 1px solid var(--steel-700);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  grid-template-areas:
+    'selector remove'
+    'name     name'
+    'price    units';
+  /* The second column is the same 5rem the till rows give a count, so the two
+     fieldsets line their numbers up. Sized rather than `auto`, which handed the
+     units box 229px and clipped a four-character price down to "1.0". */
+  grid-template-columns: minmax(0, 1fr) 5rem;
+}
+
+/* Each field is a cell of its own, which is what keeps every label attached to
+   the input it names rather than to one shared grid area. */
+.service__cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-inline-size: 0;
+}
+
+.service__cell--name {
+  grid-area: name;
+}
+
+.service__cell--price {
+  grid-area: price;
+}
+
+.service__cell--units {
+  grid-area: units;
+}
+
+/* The machine's own word for the product: stamped rather than typed, because it
+   is the identity of the row and the one part a visit cannot edit. */
+.service__selector {
+  background: var(--steel-700);
+  border-radius: var(--radius-sm);
+  color: var(--ink-dim);
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  grid-area: selector;
+  justify-self: start;
+  letter-spacing: 0.04em;
+  margin: 0;
+  padding: var(--space-1) var(--space-2);
+}
+
+.service__row .service__cell label {
+  color: var(--ink-dim);
+  font-size: 0.6875rem;
+}
+
+.service__row .service__field--price,
+.service__row .service__field--name {
+  text-align: left;
+}
+
+/*
+ * Amber, the same colour the till uses to warn about a coin, and never colour
+ * alone: the message is attached to its field with `aria-describedby` and the
+ * field carries `aria-invalid`, so what this rule adds is emphasis for people
+ * who can see it, not the information itself.
+ */
+.service__problem {
+  color: var(--lamp-amber);
+  font-size: 0.6875rem;
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.service__add {
+  background: transparent;
+  border: 1px dashed var(--steel-500);
+  border-radius: var(--radius-sm);
+  color: var(--ink-dim);
+  cursor: pointer;
+  font-size: 0.75rem;
+  margin-top: var(--space-3);
+  padding: var(--space-2);
+  width: 100%;
+}
+
+.service__add:hover:not(:disabled) {
+  border-color: var(--led-dim);
+  color: var(--ink);
+}
+
+.service__add:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.service__remove {
+  align-self: center;
+  background: transparent;
+  border: 1px solid var(--steel-500);
+  border-radius: var(--radius-sm);
+  color: var(--ink-dim);
+  cursor: pointer;
+  font-size: 0.75rem;
+  grid-area: remove;
+  padding: var(--space-2);
+}
+
+.service__remove:hover:not(:disabled) {
+  border-color: var(--brand);
+  color: var(--ink);
+}
+
+.service__remove:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/*
+ * A till row asks two things about one denomination — does the slot take it, and
+ * how many are in there — so it is one row with a switch in front of the count
+ * rather than two lists to read side by side. The shelf rows keep the two-column
+ * grid: an empty column there would indent every product label past a switch
+ * that does not exist.
+ */
+.service__row--controlled {
+  grid-template-areas:
+    'switch switch-label label input'
+    'note   note         note  note';
+  grid-template-columns: auto auto minmax(0, 1fr) 5rem;
+}
+
+/* Both selectors are class-on-class so they outrank `.service__row input` and
+   `.service__row label`, which describe the number field and its name. */
+.service__row .service__switch {
+  accent-color: var(--brand);
+  block-size: 1.125rem;
+  box-shadow: none;
+  grid-area: switch;
+  inline-size: 1.125rem;
+  padding: 0;
+  width: auto;
+}
+
+.service__row .service__switch-label {
+  color: var(--ink-dim);
+  grid-area: switch-label;
 }
 
 .service__note {

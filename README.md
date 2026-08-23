@@ -8,18 +8,19 @@ docker compose exec backend php bin/console app:machine:run "1, 0.25, 0.25, GET-
 # -> SODA
 ```
 
-> **Status.** Complete. Both halves are built and containerised: domain, use cases, HTTP API, CLI and persistence on one side; the React panel, its own image and a reverse proxy on the other, with `make up` serving the pair. The backlog is empty — every ticket, including the follow-up the reviews turned up, is closed and lives in [`.claude/completed_tasks/`](.claude/completed_tasks/).
+> **Status.** Complete. Both halves are built and containerised: domain, use cases, HTTP API, CLI and persistence on one side; the React panel, its own image and a reverse proxy on the other, with `make up` serving the pair. The backlog is empty — every ticket, including the post-delivery epic that made the coin acceptor configurable, is closed and lives in [`.claude/completed_tasks/`](.claude/completed_tasks/).
 
 ---
 
 ## What the machine does
 
-- Takes **0.05, 0.10, 0.25 and 1.00**, and gives back only the first three — it accepts a 1.00 coin and never dispenses one ([why](docs/assumptions.md))
+- The acceptor reads **six denominations — 0.05, 0.10, 0.25, 0.50, 1.00 and 2.00** — and each machine takes the subset a technician switched on. Factory default: the four the brief names, so the brief's examples run unchanged ([ADR-0018](docs/adr/0018-coins-the-hardware-reads-and-coins-the-machine-takes.md))
+- Change comes back only in **0.05, 0.10, 0.25 and 0.50** — the two big pieces go in and never come out ([why](docs/assumptions.md))
 - Sells **Water 0.65, Juice 1.00, Soda 1.50**, each with a selector, a price and a stock count
 - **RETURN-COIN** hands back the very coins that went in
-- Overpaying returns the item **and the change**, composed from the coins physically inside the machine
+- Overpaying returns the item **and the change**, composed from the coins physically inside the machine — the ones this machine still takes; money of a switched-off denomination stays in the till and is never handed out
 - When the change cannot be composed, **the sale is refused and the money stays put** — the situation the brief never mentions, decided in [ADR-0007](docs/adr/0007-reject-purchase-when-change-unavailable.md)
-- **SERVICE** lets a technician set what the machine stocks and how much change it holds
+- **SERVICE** lets a technician set what the machine stocks, how much change it holds and which coins it takes — switching every coin off is how a machine goes **out of service**, and the model needs no flag to say so: nothing can be inserted, so nothing can be bought
 
 ## Requirements
 
@@ -118,7 +119,7 @@ It stays true because it is executed. Every response the acceptance suite produc
 | `POST` | `/api/machine/coins` | Insert one coin |
 | `POST` | `/api/machine/coins/return` | The RETURN-COIN button |
 | `POST` | `/api/machine/purchases` | Press a product button |
-| `PUT` | `/api/machine/service` | A technician sets stock and change |
+| `PUT` | `/api/machine/service` | A technician sets stock, change and which coins are taken |
 | `GET` | `/api/health` | Liveness, for the container healthcheck |
 
 <details open>
@@ -140,12 +141,20 @@ It stays true because it is executed. Every response the acceptance suite produc
     {"denomination":"0.10","dispensableAsChange":true},
     {"denomination":"0.25","dispensableAsChange":true},
     {"denomination":"1.00","dispensableAsChange":false}],
-  "exactChangeOnly":false}}
+  "supportedCoins":[
+    {"denomination":"0.05","dispensableAsChange":true,"enabled":true},
+    {"denomination":"0.10","dispensableAsChange":true,"enabled":true},
+    {"denomination":"0.25","dispensableAsChange":true,"enabled":true},
+    {"denomination":"0.50","dispensableAsChange":true,"enabled":false},
+    {"denomination":"1.00","dispensableAsChange":false,"enabled":true},
+    {"denomination":"2.00","dispensableAsChange":false,"enabled":false}],
+  "exactChangeOnly":false,
+  "outOfService":false}}
 ```
 
-`exactChangeOnly` is the lamp on the front of the machine: the till holds nothing it is allowed to give back, so a client can warn before taking someone's money instead of discovering it in a refused sale.
+`exactChangeOnly` is the lamp on the front of the machine: the till holds nothing it is allowed to give back, so a client can warn before taking someone's money instead of discovering it in a refused sale. `outOfService` is the other lamp — every denomination switched off, so nothing can be inserted and nothing bought.
 
-`acceptedCoins` answers a different question from `changeReserve` — what the slot takes, not what the till holds, so a machine serviced down to nothing still accepts all four. It exists so a client does not carry the list itself, and `dispensableAsChange` for the same reason: that the 1.00 coin goes in and never comes back is an interpretation of the brief, and a rule reimplemented on the far side of a network is a rule two systems will eventually disagree about.
+`acceptedCoins` and `supportedCoins` answer the two coin questions a client can ask. The first is what **this machine takes today** — the coins a customer may insert, and servicing the catalogue down to nothing changes none of them. The second is what **the hardware could read** — all six, each with its `enabled` flag, which is what a technician's form edits. Both carry `dispensableAsChange` so a client does not reimplement the rule that the big coins never come back: a rule reimplemented on the far side of a network is a rule two systems will eventually disagree about.
 </details>
 
 <details open>
@@ -174,10 +183,13 @@ It stays true because it is executed. Every response the acceptance suite produc
 ```bash
 curl -X PUT localhost:8000/api/machine/service -H 'Content-Type: application/json' -d '{
   "products":[{"selector":"TEA","name":"Iced Tea","price":"0.80","count":4}],
-  "changeReserve":[{"denomination":"0.25","count":10}]}'
+  "changeReserve":[{"denomination":"0.25","count":10}],
+  "acceptedCoins":["0.05","0.10","0.25","0.50","1.00"]}'
 ```
 
 SERVICE *sets*; it does not top up. Any money a customer had inserted is returned first — someone opening the machine does not get to keep it.
+
+`acceptedCoins` is optional, and absent means something different from empty: leave the acceptor as it is, versus take nothing from now on — an empty list is how a technician takes the machine out of service.
 </details>
 
 ### When it says no
@@ -237,22 +249,22 @@ No attributes in the core either: routes live in YAML, handlers are registered b
 ## Tests
 
 ```bash
-make test           # 478 tests, 3 335 assertions
-make test-unit      # 289 of them, no kernel and no database
+make test           # 549 tests, 3 700 assertions
+make test-unit      # 318 of them, no kernel and no database
 make qa             # both halves; every CI gate that needs no network
 make test-mutation  # Infection over Domain + Application — MSI 100%
 
-make front-test     # the panel's own 131, in jsdom
+make front-test     # the panel's own 212, in jsdom
 make front-lint     # ESLint, accessibility rules included
-make front-e2e      # five in a real browser, against a running `make up`
+make front-e2e      # seven in a real browser, against a running `make up`
 ```
 
 | Suite | Tests | Answers |
 |---|---:|---|
-| unit | 289 | Are the business rules correct? |
-| application | 38 | Does the use case orchestrate correctly? |
-| integration | 43 | Does the adapter honour the port? |
-| acceptance | 108 | Does it work end to end, error contract included? |
+| unit | 318 | Are the business rules correct? |
+| application | 45 | Does the use case orchestrate correctly? |
+| integration | 53 | Does the adapter honour the port? |
+| acceptance | 133 | Does it work end to end, error contract included? |
 
 The three examples of the brief exist as executable specification at four levels. The repository port has **one abstract contract test that both adapters must pass**, written with the first adapter long before the second existed — which is the answer to "how do you know your in-memory double is not lying?".
 
@@ -262,7 +274,7 @@ The domain is gated by mutation testing rather than line coverage, because cover
 
 ## How to extend it
 
-The two questions the brief asks about extensibility, answered by doing them.
+The two questions the brief asks about extensibility, answered by doing them — plus the case in between that the configurable acceptor added: a coin the hardware reads that one machine switches on.
 
 ### A new product: no code at all
 
@@ -283,18 +295,36 @@ It is on sale immediately, and change works for it like any other:
   "change":{"coins":[{"denomination":"0.05","count":1}],"amount":"0.05"}}}
 ```
 
+### A coin the hardware already reads: switch it on, no code at all
+
+Which coins a machine *takes* is state a service visit sets, so the day the operator wants the 0.50 accepted is a `curl`, not a deployment — captured from a live machine:
+
+```bash
+# the same service call as above, with the 0.50 switched on and loaded
+curl -X PUT localhost:8000/api/machine/service ... -d '{..., "acceptedCoins":["0.05","0.10","0.25","0.50","1.00"]}'
+
+curl -X POST localhost:8000/api/machine/coins -H 'Content-Type: application/json' -d '{"coin":"0.50"}'
+# accepted — {"insertedCoins":{"coins":[{"denomination":"0.50","count":1}],"amount":"0.50"}, ...}
+
+curl -X POST localhost:8000/api/machine/coins -H 'Content-Type: application/json' -d '{"coin":"0.25"}'
+curl -X POST localhost:8000/api/machine/purchases -H 'Content-Type: application/json' -d '{"selector":"WATER"}'
+# {"dispensed":{"selector":"WATER","price":"0.65","change":{"coins":[{"denomination":"0.10","count":1}],"amount":"0.10"}}}
+```
+
+A 0.65 bottle paid with 0.50 + 0.25, a 0.10 back. The panel's service drawer drives the same field with a switch per denomination.
+
 ### A new coin: the tooling asks you the question
 
-Coins are the opposite: a closed set, a physical property of the hardware, so `CoinDenomination` is an enum. Add `case TWENTY_CENTS = 20;`, run the checks, and the first thing they point at is a single line:
+The hardware's set is the opposite: closed and physical, so `CoinDenomination` is an enum. This section used to be a hypothetical exercise; then the 0.50 and 2.00 pieces actually joined ([ADR-0018](docs/adr/0018-coins-the-hardware-reads-and-coins-the-machine-takes.md)), and the walk below is what that felt like — re-run for this README today rather than remembered. Add `case TWENTY_CENTS = 20;`, run the checks, and the first thing they point at is a single line:
 
 ```
 PHPStan  Match expression does not handle remaining value:
-         CoinDenomination::TWENTY_CENTS          CoinDenomination.php:43
+         CoinDenomination::TWENTY_CENTS          CoinDenomination.php:60
 ```
 
 That is the design working. The `match` in `isDispensableAsChange()` is exhaustive on purpose, so a new denomination cannot inherit a silent default — **the analyser makes you answer whether the machine may give this coin back**, which is the one question a new coin actually raises. Leave it unanswered and there is no answer at runtime either: reading the machine reaches a `match` with no arm for the new coin, and the API answers 500.
 
-PHPUnit points at the other place the coin set is declared. The accepted set is *published* in [`docs/openapi.yaml`](docs/openapi.yaml) and every acceptance response is validated against it, so the coin has to be declared there too — the contract enforcing itself rather than springing a surprise later. Answer the match, widen the contract, and **twelve** tests still fail: four unit, five application, three acceptance, each of them a test whose job is to write the current coin set down.
+PHPUnit points at the other places the coin set is written down. Answer the match and **57 tests fail**: five unit — one of them literally named `the_hardware_reads_exactly_six_denominations` — four application, and forty-eight acceptance. The forty-eight are all the same objection: `supportedCoins` now publishes a seventh coin, and every response carrying it is refused against [`docs/openapi.yaml`](docs/openapi.yaml) until the contract declares the coin too — the contract enforcing itself rather than springing a surprise later.
 
 Nothing else breaks. The change algorithm is generic over denominations, and neither the aggregate nor any adapter mentions a specific coin.
 
@@ -304,7 +334,7 @@ Nothing else breaks. The change algorithm is generic over denominations, and nei
 
 Everywhere the brief was silent, a decision was still required. [`docs/assumptions.md`](docs/assumptions.md) is the full list; the ones that matter most:
 
-- **The machine never gives back a 1.00 coin.** The brief accepts four coins and lists three as valid responses; example 3 confirms it.
+- **The big coins go in and never come out.** The brief accepts four coins and lists three as valid responses; example 3 confirms it for the 1.00, and the 2.00 follows the same rule. The 0.50 sits on the other side of the line, where every real machine puts it.
 - **SERVICE sets absolute values** and returns any money in the escrow first.
 - **Coins just inserted can pay their own change** — they are physically inside the machine.
 - **A sale that cannot be given change is refused**, and the money stays in the escrow.
@@ -322,7 +352,7 @@ And what was deliberately *not* built, which is the more interesting half:
 
 ## Decision records
 
-Seventeen ADRs, each written in the same commit as the decision it records, each with real alternatives and at least one honest downside.
+Eighteen ADRs, each written in the same commit as the decision it records, each with real alternatives and at least one honest downside.
 
 **[Index →](docs/adr/)** · The four worth reading first: [one aggregate](docs/adr/0005-single-aggregate-root.md) · [refusing a sale without change](docs/adr/0007-reject-purchase-when-change-unavailable.md) · [the aggregate as one row](docs/adr/0008-doctrine-sqlite-xml-mapping.md) · [the error contract](docs/adr/0012-rfc7807-errors-with-explicit-status-rule.md)
 
@@ -346,7 +376,7 @@ docs/
   openapi.yaml         the API contract, validated against real responses by the suite
   architecture.md      the hexagon, and a purchase traced through it
   testing-strategy.md  what each of the four suites is for
-  adr/                 seventeen decision records
+  adr/                 eighteen decision records
 frontend/
   src/                 the panel: pages · hooks · components · services
   docker/nginx.conf    serves the build, and forwards /api to the backend

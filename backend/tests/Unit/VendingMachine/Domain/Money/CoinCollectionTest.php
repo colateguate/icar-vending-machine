@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\VendingMachine\Domain\Money;
 
 use App\VendingMachine\Domain\Exception\UnsupportedCoin;
+use App\VendingMachine\Domain\Money\AcceptedCoins;
 use App\VendingMachine\Domain\Money\CoinCollection;
 use App\VendingMachine\Domain\Money\CoinDenomination;
 use App\VendingMachine\Domain\Money\Money;
@@ -155,6 +156,34 @@ final class CoinCollectionTest extends TestCase
         self::assertSame(1, $dispensable->countOf(CoinDenomination::TWENTY_FIVE_CENTS));
         self::assertSame(2, $dispensable->countOf(CoinDenomination::TEN_CENTS));
         self::assertSame(4, $pool->countOf(CoinDenomination::ONE_UNIT), 'the original must not change');
+    }
+
+    /**
+     * The other narrowing, and the one that depends on the machine rather than
+     * on the currency: coins of a denomination this machine no longer takes are
+     * still in the till, and still its money — they are simply not part of what
+     * it can pay out.
+     */
+    public function test_it_lists_only_the_coins_a_machine_still_takes(): void
+    {
+        $pool = CoinCollection::fromCounts([50 => 4, 25 => 1, 10 => 2]);
+
+        $payable = $pool->restrictedTo(AcceptedCoins::of(
+            CoinDenomination::TEN_CENTS,
+            CoinDenomination::TWENTY_FIVE_CENTS,
+        ));
+
+        self::assertSame(0, $payable->countOf(CoinDenomination::FIFTY_CENTS));
+        self::assertSame(1, $payable->countOf(CoinDenomination::TWENTY_FIVE_CENTS));
+        self::assertSame(2, $payable->countOf(CoinDenomination::TEN_CENTS));
+        self::assertSame(4, $pool->countOf(CoinDenomination::FIFTY_CENTS), 'the original must not change');
+    }
+
+    public function test_a_collection_restricted_to_nothing_is_empty(): void
+    {
+        $pool = CoinCollection::fromCounts([25 => 2]);
+
+        self::assertTrue($pool->restrictedTo(AcceptedCoins::none())->isEmpty());
     }
 
     public function test_collections_holding_the_same_coins_are_equal(): void

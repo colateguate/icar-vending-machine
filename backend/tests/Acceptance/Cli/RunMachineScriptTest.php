@@ -116,10 +116,20 @@ final class RunMachineScriptTest extends CliTestCase
      */
     public static function refusalsTheMachineCanMake(): iterable
     {
-        yield 'a coin the machine does not take' => [
+        yield 'a coin no machine of this model can read' => [
             VendingMachineBuilder::aStockedMachine()->withId(self::MACHINE_ID)->build(),
             '0.02, GET-WATER',
             ['2 cents'],
+        ];
+
+        // The other refusal a coin can meet, and the one the second door has to
+        // give in the machine's own words: 0.50 is a piece the acceptor reads
+        // and this machine is not taking. Told apart at the slot, told apart in
+        // the sentence.
+        yield 'a coin this machine has been switched off for' => [
+            VendingMachineBuilder::aStockedMachine()->withId(self::MACHINE_ID)->build(),
+            '0.50, GET-WATER',
+            ['not currently taking', '0.50'],
         ];
 
         yield 'a product this machine does not stock' => [

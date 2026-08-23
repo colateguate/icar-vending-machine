@@ -78,8 +78,12 @@ Four mechanisms keep the framework out, and each closes a different door:
  5  VendingMachine::purchase()         ★ the only place the three moving parts
                                        agree at once. Resolves the product,
                                        checks stock, checks the money, composes
-                                       the change from escrow + reserve — and
-                                       only then commits all three fields at
+                                       the change from escrow + reserve — offering
+                                       the policy only coins this machine takes,
+                                       so stranded pieces stay in the till; that
+                                       the big coins never come back is the
+                                       policy's own contract, not a pre-filter —
+                                       and only then commits all three fields at
                                        once: inventory, reserve and escrow.
  6  DoctrineVendingMachineRepository   flush. The version column is checked here:
                                        a stale write is refused, not overwritten.

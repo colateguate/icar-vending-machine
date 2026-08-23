@@ -125,20 +125,39 @@ describe('purchase', () => {
 });
 
 describe('service', () => {
-  it('sends the whole shelf and the whole till, because a service visit sets both', async () => {
+  it('sends the shelf, the till and the acceptor, because a service visit sets all three', async () => {
     request.mockResolvedValue(machineState);
     const products = [{ selector: 'TEA', name: 'Iced Tea', price: '0.80', count: 4 }];
     const changeReserve = [{ denomination: '0.25', count: 2 }];
+    const acceptedCoins = ['0.25', '0.50'];
 
-    await service(products, changeReserve);
+    await service(products, changeReserve, acceptedCoins);
 
-    expect(request).toHaveBeenCalledWith('PUT', '/machine/service', { body: { products, changeReserve } });
+    expect(request).toHaveBeenCalledWith('PUT', '/machine/service', {
+      body: { products, changeReserve, acceptedCoins },
+    });
+  });
+
+  /**
+   * The field is optional in the contract, and absent means something else than
+   * empty: absent leaves the acceptor as it was, empty takes the machine out of
+   * service. This client always states it, so the empty list has to survive the
+   * trip rather than be optimised away into silence.
+   */
+  it('sends an empty acceptor as an empty list, which is not the same as saying nothing', async () => {
+    request.mockResolvedValue(machineState);
+
+    await service([], [], []);
+
+    expect(request).toHaveBeenCalledWith('PUT', '/machine/service', {
+      body: { products: [], changeReserve: [], acceptedCoins: [] },
+    });
   });
 
   it('surfaces the field at fault when the payload is not valid input', async () => {
     request.mockRejectedValue(problem(422, 'invalid_request_payload', { field: 'products[0].count' }));
 
-    const thrown = await service([], []).catch((error) => error);
+    const thrown = await service([], [], []).catch((error) => error);
 
     expect(thrown.code).toBe('invalid_request_payload');
     expect(thrown.extensions.field).toBe('products[0].count');

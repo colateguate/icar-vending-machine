@@ -44,6 +44,23 @@ final class InsertCoinEndpointTest extends ApiTestCase
         self::assertSame('unsupported_coin', $this->responseBody()['code']);
     }
 
+    /**
+     * The other half of the same 422, and the distinction the whole coin
+     * configuration rests on: a 0.50 piece is a coin the hardware reads
+     * perfectly well and this machine has been switched off for. Two different
+     * situations get two different codes, so a client can say which one
+     * happened.
+     */
+    public function test_it_rejects_a_coin_this_machine_has_been_switched_off_for(): void
+    {
+        $this->givenAStockedMachine();
+
+        $this->request('POST', '/api/machine/coins', ['coin' => '0.50']);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame('coin_not_accepted', $this->responseBody()['code']);
+    }
+
     public function test_it_rejects_an_amount_that_is_not_money(): void
     {
         $this->givenAStockedMachine();

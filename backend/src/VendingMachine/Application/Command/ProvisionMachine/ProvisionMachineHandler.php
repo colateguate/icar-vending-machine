@@ -11,7 +11,9 @@ use App\VendingMachine\Application\Shared\MachineLocator;
 use App\VendingMachine\Domain\Catalog\Inventory;
 use App\VendingMachine\Domain\Machine\VendingMachine;
 use App\VendingMachine\Domain\Machine\VendingMachineRepository;
+use App\VendingMachine\Domain\Money\AcceptedCoins;
 use App\VendingMachine\Domain\Money\CoinCollection;
+use App\VendingMachine\Domain\Money\CoinDenomination;
 
 /**
  * Creates the machine if it is not there, and does nothing at all if it is.
@@ -41,15 +43,22 @@ final readonly class ProvisionMachineHandler implements CommandHandler
             return;
         }
 
+        $accepted = AcceptedCoins::of(...array_map(
+            CoinDenomination::fromCents(...),
+            $command->acceptedCoins,
+        ));
+
         $machine = VendingMachine::provision(
             $this->locator->machineId(),
             Inventory::empty(),
             CoinCollection::empty(),
+            $accepted,
         );
 
         $machine->service(
             Catalogue::fromRows($command->products),
             CoinCollection::fromCounts($command->changeReserve),
+            $accepted,
         );
 
         $this->repository->save($machine);

@@ -52,6 +52,16 @@ final class ProvisionMachineCommand extends Command
      */
     private const CHANGE_RESERVE = [5 => 20, 10 => 20, 25 => 20];
 
+    /**
+     * The four coins the brief names. The acceptor can read two more — 0.50 and
+     * 2.00 — and a machine installed from here does not take them until a
+     * technician says so, which is what keeps this machine the one the brief
+     * describes while the model is able to describe others.
+     *
+     * @var list<int>
+     */
+    private const ACCEPTED_COINS = [5, 10, 25, 100];
+
     public function __construct(
         private readonly CommandBus $commands,
         private readonly MachineLocator $locator,
@@ -70,7 +80,7 @@ final class ProvisionMachineCommand extends Command
             return self::SUCCESS;
         }
 
-        $this->commands->dispatch(new ProvisionMachine(self::CATALOGUE, self::CHANGE_RESERVE));
+        $this->commands->dispatch(new ProvisionMachine(self::CATALOGUE, self::CHANGE_RESERVE, self::ACCEPTED_COINS));
 
         $console->success(\sprintf('Machine "%s" provisioned with %d products.', $machineId, \count(self::CATALOGUE)));
 

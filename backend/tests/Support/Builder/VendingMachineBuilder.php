@@ -10,6 +10,7 @@ use App\VendingMachine\Domain\Catalog\ProductSelector;
 use App\VendingMachine\Domain\Catalog\Quantity;
 use App\VendingMachine\Domain\Machine\MachineId;
 use App\VendingMachine\Domain\Machine\VendingMachine;
+use App\VendingMachine\Domain\Money\AcceptedCoins;
 use App\VendingMachine\Domain\Money\CoinCollection;
 use App\VendingMachine\Domain\Money\CoinDenomination;
 use App\VendingMachine\Domain\Money\Money;
@@ -30,12 +31,22 @@ final class VendingMachineBuilder
 
     private CoinCollection $changeReserve;
 
+    private AcceptedCoins $acceptedCoins;
+
     /** @var list<CoinDenomination> */
     private array $insertedCoins = [];
 
     private function __construct()
     {
         $this->changeReserve = CoinCollection::empty();
+        // The four the brief names, so a test that says nothing about coins
+        // gets the machine the brief describes.
+        $this->acceptedCoins = AcceptedCoins::of(
+            CoinDenomination::FIVE_CENTS,
+            CoinDenomination::TEN_CENTS,
+            CoinDenomination::TWENTY_FIVE_CENTS,
+            CoinDenomination::ONE_UNIT,
+        );
     }
 
     public static function aMachine(): self
@@ -91,6 +102,24 @@ final class VendingMachineBuilder
         return $this;
     }
 
+    public function accepting(CoinDenomination ...$coins): self
+    {
+        $this->acceptedCoins = AcceptedCoins::of(...$coins);
+
+        return $this;
+    }
+
+    /**
+     * A machine switched off at the acceptor: it reads no coin, so nobody can
+     * pay it.
+     */
+    public function acceptingNothing(): self
+    {
+        $this->acceptedCoins = AcceptedCoins::none();
+
+        return $this;
+    }
+
     public function withInsertedCoins(CoinDenomination ...$coins): self
     {
         $this->insertedCoins = array_values($coins);
@@ -104,6 +133,7 @@ final class VendingMachineBuilder
             MachineId::fromString($this->id),
             Inventory::of(...$this->products),
             $this->changeReserve,
+            $this->acceptedCoins,
         );
 
         foreach ($this->insertedCoins as $coin) {

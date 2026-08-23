@@ -109,3 +109,89 @@ test('the controls keep the names a screen reader reads out', async ({ page }) =
    */
   expect(named).toContainEqual({ role: 'button', name: 'RETURN-COIN' });
 });
+
+/**
+ * Every name in the service drawer is assembled rather than written. A till
+ * switch is called after the coin it governs and a shelf field after the
+ * product it belongs to, and in both cases that word sits in a
+ * `visually-hidden` span, so the drawer does not print the same figure three
+ * and four times down a row.
+ *
+ * Which makes every one of those names a property of the *stylesheet*. Turn
+ * that class into `display: none` — the reflex fix for "hide this" — and Chrome
+ * drops the text from the accessibility tree: six checkboxes all called
+ * "accepted", and three fields per product all called "name", "price" and
+ * "units" with nothing to say which product. Every Vitest query for them stays
+ * green throughout, because jsdom runs with `css: false` and never applies the
+ * rule that broke them.
+ */
+test('the drawer names its controls out of text that is never on screen', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Service' }).click();
+  await expect(page.getByRole('dialog', { name: 'Service' })).toBeVisible();
+
+  // The drawer opens on Products; only the selected tab's panel is mounted, so
+  // each half is read with its own tab in front. The coin switch is the name
+  // this spec exists for: since the "accepted" of its label moved into the
+  // column heading, the ENTIRE name lives in a visually-hidden element — turn
+  // that class into display:none and the switch has no name at all.
+  const products = await namedNodes(page);
+
+  expect(products).toContainEqual({ role: 'tab', name: 'Products' });
+  expect(products).toContainEqual({ role: 'tab', name: 'Coins' });
+  expect(products).toContainEqual({ role: 'textbox', name: 'WATER — name' });
+  expect(products).toContainEqual({ role: 'textbox', name: 'WATER — price' });
+  expect(products).toContainEqual({ role: 'spinbutton', name: 'WATER — units' });
+  expect(products).toContainEqual({ role: 'button', name: 'Remove WATER' });
+
+  await page.getByRole('tab', { name: 'Coins' }).click();
+
+  const coins = await namedNodes(page);
+
+  expect(coins).toContainEqual({ role: 'checkbox', name: '0.50 — accepted' });
+  expect(coins).toContainEqual({ role: 'checkbox', name: '1.00 — accepted' });
+});
+
+/**
+ * The other half of what a stylesheet can do to this drawer, and the one this
+ * ticket was bitten by: the fields were all there, correctly named and holding
+ * the right values, and one of them was too narrow to show what it held. A
+ * price of "0.65" arrived in a box 44px wide that needed 51 and read "0.6".
+ *
+ * Asked as an invariant rather than as pixels, so it survives a redesign: no
+ * field may need more room than it has, and the drawer may not scroll sideways.
+ * `toHaveValue` cannot see this — the DOM value is right either way — and jsdom
+ * has no layout at all, so this question has no answer below this level.
+ */
+test('no field in the drawer is too narrow for what it holds', async ({ page }) => {
+  /*
+   * A phone, and the size is what makes this test able to fail at all. The
+   * drawer is a fixed 24rem that gives way to `max-width: 100%`, so a narrow
+   * screen is where its fields are really squeezed.
+   *
+   * The desktop reproduction does not survive down here, which was worth
+   * finding out: on a real screen the bug needed the 17px the drawer's vertical
+   * scrollbar takes, and headless Chromium draws scrollbars that occupy no
+   * layout space at all. Written against a tall viewport this test passed with
+   * the broken stylesheet still in place — a guard that cannot fail where it
+   * runs is not a guard.
+   */
+  await page.setViewportSize({ width: 360, height: 640 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Service' }).click();
+
+  const drawer = page.getByRole('dialog', { name: 'Service' });
+
+  await expect(drawer).toBeVisible();
+
+  const clipped = await drawer
+    .locator('input')
+    .evaluateAll((fields) =>
+      fields
+        .filter((field) => field.scrollWidth > field.clientWidth)
+        .map((field) => ({ field: field.id, value: field.value })),
+    );
+
+  expect(clipped).toEqual([]);
+  expect(await drawer.evaluate((panel) => panel.scrollWidth > panel.clientWidth)).toBe(false);
+});

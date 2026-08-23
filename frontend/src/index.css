@@ -172,3 +172,21 @@ body {
  * asking for the button named "Service" finds it whatever a stylesheet does to
  * it. It took the accessibility tree of a real browser, before and after.
  */
+
+/*
+ * Text that only a screen reader gets. There is exactly one of these on the
+ * panel — the denomination inside the label of a till switch, so that six
+ * checkboxes have six different names without printing the same figure twice on
+ * every row of the technician's form.
+ *
+ * `display: none` and `visibility: hidden` would take it out of the
+ * accessibility tree along with the pixels, which is the opposite of the point.
+ */
+.visually-hidden {
+  block-size: 1px;
+  clip-path: inset(50%);
+  inline-size: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+}

@@ -17,6 +17,13 @@ import './MachineDisplay.css';
 const GENERIC_FAULT = 'Out of order';
 
 /**
+ * The one thing this screen says with nothing having gone wrong. A machine that
+ * takes no coin cannot be paid, so it cannot sell — and the customer deserves
+ * to read that rather than infer it from a coin slot with no buttons under it.
+ */
+const OUT_OF_SERVICE = 'Out of service';
+
+/**
  * A message that needs something the document is supposed to carry. If it is
  * missing, fall back rather than print "undefined" or take the panel down with
  * a TypeError. The fallback is per message because "we could not read what you
@@ -34,7 +41,7 @@ const showing =
  * Every code the API's `ErrorCatalog` can answer with, in the order that table
  * declares them, and the sentence the screen shows for each.
  *
- * Four of the eleven this panel cannot provoke, and they are marked below
+ * Four of the twelve this panel cannot provoke, and they are marked below
  * rather than deleted. The distinction is worth being explicit about, because
  * an entry nobody can reach is otherwise indistinguishable from an entry
  * nobody has tested. They stay because this map renders a *published
@@ -45,19 +52,32 @@ const showing =
  * says "Out of order" about a request it understood perfectly well.
  */
 const MESSAGES = {
-  // Not reachable: the coin buttons and the till rows are both rendered from
-  // `acceptedCoins`, so every denomination this panel sends came from the
-  // machine's own answer — and so did every price.
+  // Not reachable, and it stays that way now the till rows come from
+  // `supportedCoins` instead: both lists are the machine's own answer about its
+  // own acceptor, so every denomination this panel names — at the slot, in the
+  // till, or in the set it asks the machine to take — came from the machine.
+  // And so did every price.
   unsupported_coin: () => 'Coin rejected',
+  // Reachable, and for the same reason `unknown_product` is: the buttons show
+  // the coins the machine took when the panel loaded, and a service visit can
+  // switch a denomination off underneath them. The wording says the machine
+  // stopped taking it rather than that the coin is bad, which is the whole
+  // difference between this code and the one above it.
+  coin_not_accepted: () => 'Coin no longer taken',
   invalid_money_amount: () => 'Coin rejected',
   // Reachable. The catalogue on screen is the one the machine published when
   // the panel loaded, and a service visit — another tab, or the technician
   // standing at the same machine — can replace it. Nothing refetches, so a
   // button here can name a product the machine has stopped stocking.
   unknown_product: () => 'Unknown selection',
-  // Not reachable: a selector is only ever echoed back from what the machine
-  // published. The service form edits counts and nothing else, so no selector
-  // is ever typed into this panel.
+  // Reachable now, and only barely — which is the interesting part. The service
+  // form types selectors, so this is no longer a code no request of ours can
+  // provoke; but that form mirrors the same format the API enforces and refuses
+  // to send what it knows will bounce. So arriving here means the mirror and
+  // the original have drifted apart, which is exactly the failure the mirror
+  // was worth worrying about. The message stays deliberately about the
+  // selection rather than about the form: by the time this shows, the panel has
+  // already been proved wrong about what it thought it knew.
   invalid_product_selector: () => 'Unknown selection',
   product_out_of_stock: () => 'Sold out',
   insufficient_funds: showing('missingAmount', (amount) => `Insert ${amount} more`),
@@ -79,7 +99,12 @@ const MESSAGES = {
   ),
   // Not reachable: every body this panel sends is built by `JSON.stringify`.
   malformed_json: () => 'Request not understood',
-  machine_not_provisioned: () => 'Out of service',
+  // Not the same sentence as a machine somebody switched off, and the
+  // difference is whose problem it is. This one is a machine nobody has
+  // provisioned — our fault, answered with a 503 — while a machine out of
+  // service is a technician's decision, correctly carried out. They stopped
+  // sharing a sentence the day the second one became reachable.
+  machine_not_provisioned: () => 'Not ready yet',
 };
 
 /**
@@ -102,8 +127,18 @@ function messageFor(error) {
   return write ? write(error) : GENERIC_FAULT;
 }
 
-export default function MachineDisplay({ amount, error = null }) {
-  const message = messageFor(error);
+/**
+ * Three things can be on this screen and only one of them at a time, so the
+ * order they win in is the decision worth stating.
+ *
+ * A refusal goes first because it answers the button the customer just pressed;
+ * a standing notice shown over it would make that press look like it did
+ * nothing at all. Out of service comes next: nothing has gone wrong and nobody
+ * asked, but it is true while the customer stands there. The amount is last,
+ * and it is what the screen says when there is nothing to say.
+ */
+export default function MachineDisplay({ amount, error = null, outOfService = false }) {
+  const message = messageFor(error) ?? (outOfService ? OUT_OF_SERVICE : null);
 
   return (
     <p aria-label="Display" className="display" role="status">

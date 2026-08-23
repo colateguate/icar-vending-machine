@@ -39,21 +39,26 @@ final readonly class ServiceMachineRequest
     /**
      * @param list<array{selector: string, name: string, price: string, count: int}> $products
      * @param array<int, int>                                                        $changeReserve denomination in cents => how many
+     * @param list<int>|null                                                         $acceptedCoins denominations in cents, or null when
+     *                                                                                              the visit did not mention the acceptor
      */
-    private function __construct(private array $products, private array $changeReserve)
-    {
+    private function __construct(
+        private array $products,
+        private array $changeReserve,
+        private ?array $acceptedCoins,
+    ) {
     }
 
     public static function of(Request $request): self
     {
         $body = JsonBody::of($request);
 
-        return new self(self::productsIn($body), self::changeReserveIn($body));
+        return new self(self::productsIn($body), self::changeReserveIn($body), self::acceptedCoinsIn($body));
     }
 
     public function toCommand(): ServiceMachineCommand
     {
-        return new ServiceMachineCommand($this->products, $this->changeReserve);
+        return new ServiceMachineCommand($this->products, $this->changeReserve, $this->acceptedCoins);
     }
 
     /**
@@ -79,6 +84,37 @@ final readonly class ServiceMachineRequest
         }
 
         return array_values($products);
+    }
+
+    /**
+     * Which denominations the machine takes from now on — a set, so it travels
+     * as a plain list of amounts rather than as a flag on the till rows beside
+     * it. The two answer different questions: the reserve says how many coins
+     * are in there, this says which ones the slot will read, and a denomination
+     * can appear in either without the other. Money already inside when its
+     * denomination is switched off shows up as exactly that: a row in the
+     * reserve that is not in this list.
+     *
+     * Absent means the visit did not touch the acceptor. An empty list means it
+     * takes nothing at all from now on, which is a machine out of service —
+     * a state a technician is allowed to leave behind (ADR-0018).
+     *
+     * Repeats are read rather than refused, unlike a repeated till row. There a
+     * duplicate is ambiguous — four coins or two? — and here it cannot be: a
+     * set holds a denomination once however many times you name it.
+     *
+     * @return list<int>|null
+     */
+    private static function acceptedCoinsIn(JsonBody $body): ?array
+    {
+        if (!$body->has('acceptedCoins')) {
+            return null;
+        }
+
+        return array_map(
+            static fn (string $denomination): int => Money::fromDecimalString($denomination)->cents(),
+            $body->stringList('acceptedCoins'),
+        );
     }
 
     /**

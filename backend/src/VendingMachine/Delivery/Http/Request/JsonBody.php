@@ -84,6 +84,40 @@ final readonly class JsonBody
     }
 
     /**
+     * Whether the caller mentioned a field at all.
+     *
+     * Only worth asking where saying nothing and saying "nothing" are different
+     * answers: a service visit that omits the coin acceptor leaves it alone,
+     * while one that sends an empty list switches every denomination off.
+     */
+    public function has(string $field): bool
+    {
+        return \array_key_exists($field, $this->values);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function stringList(string $field): array
+    {
+        $value = $this->valueOf($field);
+        $path = $this->pathTo($field);
+
+        if (!\is_array($value)) {
+            throw InvalidRequestPayload::expected($path, 'a list');
+        }
+
+        $items = [];
+        foreach ($value as $index => $item) {
+            $items[] = \is_string($item)
+                ? $item
+                : throw InvalidRequestPayload::expected(\sprintf('%s[%d]', $path, $index), 'a string');
+        }
+
+        return $items;
+    }
+
+    /**
      * @return list<self>
      */
     public function objectList(string $field): array

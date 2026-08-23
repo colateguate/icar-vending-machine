@@ -11,6 +11,7 @@ use App\VendingMachine\Domain\Catalog\ProductSelector;
 use App\VendingMachine\Domain\Catalog\Quantity;
 use App\VendingMachine\Domain\Event\CoinsRefunded;
 use App\VendingMachine\Domain\Event\MachineServiced;
+use App\VendingMachine\Domain\Money\AcceptedCoins;
 use App\VendingMachine\Domain\Money\CoinCollection;
 use App\VendingMachine\Domain\Money\CoinDenomination;
 use App\VendingMachine\Domain\Money\Money;
@@ -22,7 +23,7 @@ final class VendingMachineServiceTest extends TestCase
     {
         $machine = VendingMachineBuilder::aStockedMachine()->build();
 
-        $machine->service(self::onlyWater(3), CoinCollection::empty());
+        $machine->service(self::onlyWater(3), CoinCollection::empty(), $machine->acceptedCoins());
 
         self::assertSame(3, $machine->inventory()->find(self::selector('WATER'))->available()->units());
         self::assertFalse(
@@ -37,7 +38,7 @@ final class VendingMachineServiceTest extends TestCase
             ->withChangeReserve([25 => 10, 10 => 10])
             ->build();
 
-        $machine->service(self::onlyWater(3), CoinCollection::fromCounts([5 => 2]));
+        $machine->service(self::onlyWater(3), CoinCollection::fromCounts([5 => 2]), $machine->acceptedCoins());
 
         self::assertSame(2, $machine->changeReserve()->countOf(CoinDenomination::FIVE_CENTS));
         self::assertSame(0, $machine->changeReserve()->countOf(CoinDenomination::TWENTY_FIVE_CENTS));
@@ -50,7 +51,7 @@ final class VendingMachineServiceTest extends TestCase
             ->withInsertedCoins(CoinDenomination::TWENTY_FIVE_CENTS, CoinDenomination::TEN_CENTS)
             ->build();
 
-        $machine->service(self::onlyWater(3), CoinCollection::empty());
+        $machine->service(self::onlyWater(3), CoinCollection::empty(), $machine->acceptedCoins());
 
         self::assertTrue(
             $machine->insertedCoins()->isEmpty(),
@@ -65,7 +66,7 @@ final class VendingMachineServiceTest extends TestCase
             ->withInsertedCoins(CoinDenomination::TWENTY_FIVE_CENTS)
             ->build();
 
-        $machine->service(self::onlyWater(3), CoinCollection::fromCounts([5 => 1]));
+        $machine->service(self::onlyWater(3), CoinCollection::fromCounts([5 => 1]), $machine->acceptedCoins());
 
         self::assertTrue(
             $machine->changeReserve()->equals(CoinCollection::fromCounts([5 => 1])),
@@ -80,7 +81,7 @@ final class VendingMachineServiceTest extends TestCase
             ->withInsertedCoins(CoinDenomination::TEN_CENTS)
             ->build();
 
-        $machine->service(self::onlyWater(3), CoinCollection::empty());
+        $machine->service(self::onlyWater(3), CoinCollection::empty(), $machine->acceptedCoins());
 
         $events = $machine->releaseEvents();
         self::assertCount(2, $events);
@@ -92,7 +93,7 @@ final class VendingMachineServiceTest extends TestCase
     {
         $machine = VendingMachineBuilder::aStockedMachine()->build();
 
-        $machine->service(self::onlyWater(3), CoinCollection::empty());
+        $machine->service(self::onlyWater(3), CoinCollection::empty(), $machine->acceptedCoins());
 
         $events = $machine->releaseEvents();
         self::assertCount(1, $events);
@@ -105,20 +106,64 @@ final class VendingMachineServiceTest extends TestCase
         $loaded = self::onlyWater(3);
         $reserve = CoinCollection::fromCounts([25 => 4]);
 
-        $machine->service($loaded, $reserve);
+        $machine->service($loaded, $reserve, $machine->acceptedCoins());
 
         $events = $machine->releaseEvents();
         self::assertInstanceOf(MachineServiced::class, $events[0]);
         self::assertTrue($events[0]->inventory()->equals($loaded));
         self::assertTrue($events[0]->changeReserve()->equals($reserve));
+        self::assertTrue($events[0]->acceptedCoins()->equals($machine->acceptedCoins()));
         self::assertTrue($events[0]->machineId()->equals($machine->id()));
+    }
+
+    /**
+     * A visit declares the whole machine, the coin acceptor included: which
+     * coins it takes is configuration a technician sets, not a property of the
+     * model. Absolute values here as everywhere else in SERVICE.
+     */
+    public function test_servicing_replaces_which_coins_the_machine_takes(): void
+    {
+        $machine = VendingMachineBuilder::aStockedMachine()
+            ->accepting(CoinDenomination::FIVE_CENTS, CoinDenomination::ONE_UNIT)
+            ->build();
+
+        $machine->service(
+            self::onlyWater(3),
+            CoinCollection::empty(),
+            AcceptedCoins::of(CoinDenomination::FIFTY_CENTS, CoinDenomination::TWO_UNITS),
+        );
+
+        self::assertTrue($machine->acceptedCoins()->accepts(CoinDenomination::FIFTY_CENTS));
+        self::assertFalse(
+            $machine->acceptedCoins()->accepts(CoinDenomination::FIVE_CENTS),
+            'SERVICE sets which coins the machine takes, it does not add to them',
+        );
+    }
+
+    /**
+     * The till may hold denominations the machine no longer takes, and the
+     * technician has to be able to say so: SERVICE states what is in the
+     * machine, and refusing to hear it would make the truth unsayable.
+     */
+    public function test_a_visit_can_declare_coins_the_machine_no_longer_takes(): void
+    {
+        $machine = VendingMachineBuilder::aStockedMachine()->build();
+
+        $machine->service(
+            self::onlyWater(3),
+            CoinCollection::fromCounts([50 => 4]),
+            AcceptedCoins::of(CoinDenomination::ONE_UNIT),
+        );
+
+        self::assertSame(4, $machine->changeReserve()->countOf(CoinDenomination::FIFTY_CENTS));
+        self::assertTrue($machine->requiresExactChange(), 'money it may not hand back does not count as change');
     }
 
     public function test_servicing_can_empty_the_machine(): void
     {
         $machine = VendingMachineBuilder::aStockedMachine()->build();
 
-        $machine->service(Inventory::empty(), CoinCollection::empty());
+        $machine->service(Inventory::empty(), CoinCollection::empty(), $machine->acceptedCoins());
 
         self::assertTrue($machine->inventory()->isEmpty());
         self::assertTrue($machine->changeReserve()->isEmpty());

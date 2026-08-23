@@ -1,7 +1,7 @@
 # End-to-end tests
 
 The fifth test level, and the only one that drives a real browser against the
-running stack. Five specs, about two seconds, and every one of them was watched
+running stack. Seven specs, about two seconds, and every one of them was watched
 failing before it was kept.
 
 ```bash
@@ -10,7 +10,7 @@ make front-e2e     # or, from frontend/: npx playwright test
 ```
 
 `E2E_BASE_URL` points them somewhere else. There is no `webServer` in
-`playwright.config.js` on purpose: two of these specs are questions about the
+`playwright.config.js` on purpose: three of these specs are questions about the
 nginx in the panel's image, and a Playwright-started dev server would be a
 different program answering them.
 
@@ -38,8 +38,9 @@ So, concretely:
 
 ## What each spec is watching, and why it would go unnoticed otherwise
 
-**`machine.spec.js` — the stylesheet as a behaviour change.** Both of these
-happened in ticket 17c and both were found by hand.
+**`machine.spec.js` — the stylesheet as a behaviour change.** The first two
+happened in ticket 17c and both were found by hand; the third is the same class
+caught before it could.
 
 - The sheen over the glass is drawn across the whole window with the product
   buttons underneath it, and `pointer-events: none` is the only rule keeping it
@@ -55,6 +56,22 @@ happened in ticket 17c and both were found by hand.
   accessible name comes from the text content, so a sentinel built on
   `getByRole` would be exactly as blind as jsdom. That is Chromium-only, which
   is the whole browser list here.
+- Every control in the service drawer is named out of a `visually-hidden` span:
+  a till switch after its coin, a shelf field after its product, so the drawer
+  does not print the same figure three and four times down a row. That makes all
+  of those names a property of the stylesheet — turn the class into
+  `display: none`, the reflex fix for "hide this", and Chrome drops the text from
+  its tree, leaving six checkboxes called "accepted" and three fields per product
+  called "name", "price" and "units". Measured by doing it: the spec goes red and
+  the whole Vitest suite stays green, because every one of its queries runs in a
+  jsdom that never applied the rule.
+- No field in the drawer may need more room than it has, and the drawer may not
+  scroll sideways. A price of "0.65" once arrived in a box 44px wide that needed
+  51 and read "0.6" — the value correct, the box not, which `toHaveValue` cannot
+  see and jsdom has no layout to answer. It runs at a phone's width, and that is
+  load-bearing: written against a desktop viewport the same test passed with the
+  broken stylesheet in place, because the bug needed the 17px a vertical
+  scrollbar takes and headless Chromium's scrollbars occupy no layout space.
 
 **`serving.spec.js` — the three things `docker/nginx.conf` decides and nothing
 else in the repository watches.** Each is one character away from breaking the
@@ -62,7 +79,7 @@ application without turning an existing test red.
 
 - `proxy_pass` carries no URI part, so `/api/machine` arrives as `/api/machine`.
   Add a trailing slash and the backend is asked for `/machine`, answers 404, and
-  the panel is dead — proved by adding it: three of the five specs went red.
+  the panel is dead — proved by adding it: three specs went red.
 - `try_files … /index.html` puts a path the bundle owns into the app instead of
   nginx's own 404 page. There is one screen today, which is exactly why this
   would rot unnoticed until the first deep link.
