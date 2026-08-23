@@ -33,6 +33,3 @@ frontend/.env.*.local
 # OS / editor noise
 .DS_Store
 Thumbs.db
-
-# Personal study notes (Spanish) — not part of the deliverable
-documentation/
