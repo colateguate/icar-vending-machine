@@ -23,6 +23,7 @@ Every one of them names the alternatives that were actually considered and at le
 | [0015](0015-openapi-as-a-tested-contract.md) | A hand-written OpenAPI document, tested against real responses | Why not generate the spec from the code — and why not a Postman collection |
 | [0016](0016-frontend-layers-and-no-data-library.md) | The panel's layers, and no data-fetching library | Why there is no cache in front of an API that returns the new state on every write |
 | [0017](0017-browser-smoke-for-what-jsdom-cannot-see.md) | A fifth test level: browser smoke | Why jsdom cannot answer these five questions, and why Playwright's accessible name is not the browser's |
+| [0018](0018-coins-the-hardware-reads-and-coins-the-machine-takes.md) | Coins the hardware reads, and coins the machine takes | Why the enum stays closed at six while what a machine accepts became state a technician sets |
 
 ## The four worth reading first
 
