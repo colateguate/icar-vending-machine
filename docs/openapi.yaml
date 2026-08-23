@@ -6,10 +6,11 @@
 # from the API without the build going red.
 #
 # The examples below are not written from memory either, and that is enforced
-# rather than promised: PublishedExamplesTest provokes the exact situation
-# each one describes and asserts that the whole document came back. An example
-# that stops being a response this API gives fails the build the same way a
-# broken schema would.
+# rather than promised: PublishedExamplesTest and PublishedSuccessExamplesTest
+# provoke the exact situation each one describes — error and success sides
+# respectively — and assert that the whole document came back. An example that
+# stops being a response this API gives fails the build the same way a broken
+# schema would.
 #
 # Every example is published under a name, and no name is used twice for two
 # different examples — that is what lets a test address one and what stops a
@@ -92,8 +93,11 @@ paths:
                   status:
                     type: string
                     enum: [ok]
-              example:
-                status: ok
+              examples:
+                healthy:
+                  summary: The kernel is up
+                  value:
+                    status: ok
 
   /api/machine:
     get:

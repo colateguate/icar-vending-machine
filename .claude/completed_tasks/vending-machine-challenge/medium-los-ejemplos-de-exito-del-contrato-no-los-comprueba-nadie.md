@@ -8,12 +8,12 @@ Esto no es teórico: durante el ticket 03, al ganar el estado los campos `suppor
 
 ## Criterios de aceptación
 
-- [ ] Un test falla si un ejemplo publicado bajo `application/json` **no cumple su propio schema** (propiedad `required` ausente, tipo equivocado, propiedad de más con `additionalProperties: false`).
-- [ ] Ese test se demuestra rojo antes de darse por bueno: borrar `outOfService` de un ejemplo lo pone en rojo nombrando el ejemplo, y restaurarlo lo devuelve a verde. Output pegado.
-- [ ] Los cinco ejemplos actuales pasan sin tocarlos (hoy son válidos; el arreglo se hizo en el ticket 03).
-- [ ] Un ejemplo nuevo sin nombre (`example:` en vez de `examples:`) falla con un mensaje que dice qué hacer, como ya hace `OpenApiContract::examplesOf` (`:191`) para los de problem+json.
-- [ ] Decidir explícitamente — y dejarlo escrito en el test — si además se exige que el ejemplo sea **una respuesta que la API dé de verdad** (lo que hace `PublishedExamplesTest` con los errores) o solo que cumpla el schema. Ver "Enfoque sugerido": no son la misma promesa ni cuestan lo mismo.
-- [ ] `make qa` en verde.
+- [x] Un test falla si un ejemplo publicado bajo `application/json` **no cumple su propio schema** (propiedad `required` ausente, tipo equivocado, propiedad de más con `additionalProperties: false`).
+- [x] Ese test se demuestra rojo antes de darse por bueno: borrar `outOfService` de un ejemplo lo pone en rojo nombrando el ejemplo, y restaurarlo lo devuelve a verde. Output pegado.
+- [x] Los cinco ejemplos actuales pasan sin tocarlos (hoy son válidos; el arreglo se hizo en el ticket 03).
+- [x] Un ejemplo nuevo sin nombre (`example:` en vez de `examples:`) falla con un mensaje que dice qué hacer, como ya hace `OpenApiContract::examplesOf` (`:191`) para los de problem+json.
+- [x] Decidir explícitamente — y dejarlo escrito en el test — si además se exige que el ejemplo sea **una respuesta que la API dé de verdad** (lo que hace `PublishedExamplesTest` con los errores) o solo que cumpla el schema. Ver "Enfoque sugerido": no son la misma promesa ni cuestan lo mismo.
+- [x] `make qa` en verde.
 
 ## Capa
 
@@ -55,3 +55,11 @@ media — no hay bug en producción y los cinco ejemplos son correctos hoy; pero
 ## Origen
 
 Detectado durante implement-feature del ticket 03 (contrato de monedas configurables) — los cinco ejemplos quedaron inválidos a mitad del ticket sin que ninguna suite lo notara
+
+## Cierre (2026-08-23)
+
+- **Decisión del criterio abierto: schema + respuesta real.** `PublishedSuccessExamplesTest` monta el escenario de cada ejemplo y exige igualdad con la respuesta real; la validez contra el schema viene por transitividad, porque `ApiTestCase` ya valida cada respuesta de la suite contra el contrato. La decisión y su porqué quedan escritos en el docblock del test, como exigía el criterio.
+- Rojo demostrado en ambos sentidos: borrar `outOfService` del ejemplo `stocked` → el gate falla nombrándolo y mostrando el campo ausente; restaurarlo → verde. Antes del gate, la misma mutación dejaba la suite de aceptación en verde (127/127): el agujero existía.
+- El ejemplo anónimo del `/health` (un sexto que el ticket no contaba) cayó bajo la regla "sin nombre se rechaza": probado el rechazo con su mensaje accionable, se nombró `healthy` y ganó su escenario. Los cinco del ticket pasan sin tocarlos.
+- La cabecera de `docs/openapi.yaml` atribuía la vigilancia de todos los ejemplos a `PublishedExamplesTest`; ahora nombra a los dos gates.
+- `make qa` verde: backend 549/3.700, frontend 212, Deptrac 0, PHPStan limpio.

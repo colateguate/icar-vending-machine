@@ -31,6 +31,7 @@ use Throwable;
 final class OpenApiContract
 {
     private const PROBLEM_MEDIA_TYPE = 'application/problem+json';
+    private const SUCCESS_MEDIA_TYPE = 'application/json';
 
     private static ?ResponseValidator $validator = null;
 
@@ -38,6 +39,11 @@ final class OpenApiContract
      * @var array<string, array{status: int, code: string, value: array<array-key, mixed>}>|null
      */
     private static ?array $examples = null;
+
+    /**
+     * @var array<string, array<array-key, mixed>>|null
+     */
+    private static ?array $successExamples = null;
 
     public static function specPath(): string
     {
@@ -77,6 +83,34 @@ final class OpenApiContract
     public static function publishedProblemExamples(): array
     {
         return array_keys(self::documentedExamples());
+    }
+
+    /**
+     * The name of every success example the document publishes.
+     *
+     * @return list<string>
+     */
+    public static function publishedSuccessExamples(): array
+    {
+        return array_keys(self::documentedSuccessExamples());
+    }
+
+    /**
+     * The whole of one published success example, by its published name.
+     *
+     * @return array<array-key, mixed>
+     */
+    public static function successExampleOf(string $name): array
+    {
+        $examples = self::documentedSuccessExamples();
+
+        Assert::assertArrayHasKey($name, $examples, \sprintf(
+            'docs/openapi.yaml publishes no success example named "%s". It publishes: %s.',
+            $name,
+            implode(', ', array_keys($examples)) ?: 'none at all',
+        ));
+
+        return $examples[$name];
     }
 
     /**
@@ -135,6 +169,41 @@ final class OpenApiContract
 
         $examples = [];
 
+        foreach (self::publishedResponseBodies(self::PROBLEM_MEDIA_TYPE) as [$status, $mediaType]) {
+            foreach (self::examplesOf($mediaType, 'problem+json') as $name => $value) {
+                $code = $value['code'] ?? null;
+
+                if (!\is_string($code)) {
+                    continue;
+                }
+
+                $entry = ['status' => $status, 'code' => $code, 'value' => $value];
+
+                Assert::assertSame(
+                    $examples[$name] ?? $entry,
+                    $entry,
+                    \sprintf('docs/openapi.yaml publishes two different examples under the name "%s", so the name identifies neither.', $name),
+                );
+
+                $examples[$name] = $entry;
+            }
+        }
+
+        ksort($examples);
+
+        return self::$examples = $examples;
+    }
+
+    /**
+     * Every response body of one media type the document declares, walked in
+     * document order, paired with the status it answers under. The walk is
+     * one method because it is one question — "where can this media type come
+     * back from?" — asked twice, once per side of the contract.
+     *
+     * @return iterable<array{int, MediaType}>
+     */
+    private static function publishedResponseBodies(string $mediaTypeName): iterable
+    {
         foreach (self::validator()->getSchema()->paths as $pathItem) {
             foreach ($pathItem->getOperations() as $operation) {
                 foreach ($operation->responses ?? [] as $status => $response) {
@@ -146,53 +215,69 @@ final class OpenApiContract
                         continue;
                     }
 
-                    $mediaType = $response->content[self::PROBLEM_MEDIA_TYPE] ?? null;
+                    $mediaType = $response->content[$mediaTypeName] ?? null;
 
-                    if (!$mediaType instanceof MediaType) {
-                        continue;
-                    }
-
-                    foreach (self::examplesOf($mediaType) as $name => $value) {
-                        $code = $value['code'] ?? null;
-
-                        if (!\is_string($code)) {
-                            continue;
-                        }
-
-                        $entry = ['status' => (int) $status, 'code' => $code, 'value' => $value];
-
-                        Assert::assertSame(
-                            $examples[$name] ?? $entry,
-                            $entry,
-                            \sprintf('docs/openapi.yaml publishes two different examples under the name "%s", so the name identifies neither.', $name),
-                        );
-
-                        $examples[$name] = $entry;
+                    if ($mediaType instanceof MediaType) {
+                        yield [(int) $status, $mediaType];
                     }
                 }
+            }
+        }
+    }
+
+    /**
+     * Every success example the document publishes, whole, keyed by its
+     * published name.
+     *
+     * The same walk as its problem+json sibling above, over the other media
+     * type, and simpler on two counts that are worth stating because they are
+     * why this is not one method: a success body carries no `code` to read,
+     * and it is nested where a problem body is flat — so nothing here indexes
+     * by anything but the name. The same-name-same-example rule still holds,
+     * for the same reason it holds there.
+     *
+     * @return array<string, array<array-key, mixed>>
+     */
+    private static function documentedSuccessExamples(): array
+    {
+        if (null !== self::$successExamples) {
+            return self::$successExamples;
+        }
+
+        $examples = [];
+
+        foreach (self::publishedResponseBodies(self::SUCCESS_MEDIA_TYPE) as [, $mediaType]) {
+            foreach (self::examplesOf($mediaType, 'success') as $name => $value) {
+                Assert::assertSame(
+                    $examples[$name] ?? $value,
+                    $value,
+                    \sprintf('docs/openapi.yaml publishes two different examples under the name "%s", so the name identifies neither.', $name),
+                );
+
+                $examples[$name] = $value;
             }
         }
 
         ksort($examples);
 
-        return self::$examples = $examples;
+        return self::$successExamples = $examples;
     }
 
     /**
      * The examples one media type carries, by name.
      *
      * OpenAPI lets a media type carry a single nameless `example` as well as a
-     * named set, and a problem example without a name is refused here rather
-     * than skipped: this gate addresses examples by name, so an anonymous one
+     * named set, and an example without a name is refused here rather than
+     * skipped: these gates address examples by name, so an anonymous one
      * would be checked by nothing while looking exactly like one that is.
      *
      * @return array<string, array<array-key, mixed>>
      */
-    private static function examplesOf(MediaType $mediaType): array
+    private static function examplesOf(MediaType $mediaType, string $kind): array
     {
         Assert::assertNull(
             $mediaType->example,
-            'a problem+json example in docs/openapi.yaml has no name. Publish it under "examples:" with one, so that something can be said to check it.',
+            \sprintf('a %s example in docs/openapi.yaml has no name. Publish it under "examples:" with one, so that something can be said to check it.', $kind),
         );
 
         $values = [];
