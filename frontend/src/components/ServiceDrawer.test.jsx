@@ -52,9 +52,9 @@ const drawer = (props = {}) =>
   );
 
 const open = async (user) => {
-  await user.click(screen.getByRole('button', { name: 'Service' }));
+  await user.click(screen.getByRole('button', { name: 'Management' }));
 
-  return screen.getByRole('dialog', { name: 'Service' });
+  return screen.getByRole('dialog', { name: 'Management' });
 };
 
 /** The drawer opens on Products; the coins live behind the other tab. */
@@ -67,7 +67,7 @@ describe('ServiceDrawer', () => {
     it('is shut until someone with a key opens it', () => {
       drawer();
 
-      expect(screen.getByRole('button', { name: 'Service' })).toHaveAttribute(
+      expect(screen.getByRole('button', { name: 'Management' })).toHaveAttribute(
         'aria-expanded',
         'false',
       );
@@ -80,7 +80,7 @@ describe('ServiceDrawer', () => {
 
       await open(user);
 
-      expect(screen.getByRole('button', { name: 'Service' })).toHaveAttribute(
+      expect(screen.getByRole('button', { name: 'Management' })).toHaveAttribute(
         'aria-expanded',
         'true',
       );
@@ -138,7 +138,7 @@ describe('ServiceDrawer', () => {
 
       await user.keyboard('{Escape}');
 
-      expect(screen.getByRole('button', { name: 'Service' })).toHaveFocus();
+      expect(screen.getByRole('button', { name: 'Management' })).toHaveFocus();
     });
 
     it('also closes from its own close control, for whoever is using a mouse', async () => {
@@ -149,7 +149,7 @@ describe('ServiceDrawer', () => {
       await user.click(screen.getByRole('button', { name: 'Close' }));
 
       expect(screen.queryByRole('dialog')).toBeNull();
-      expect(screen.getByRole('button', { name: 'Service' })).toHaveFocus();
+      expect(screen.getByRole('button', { name: 'Management' })).toHaveFocus();
     });
   });
 

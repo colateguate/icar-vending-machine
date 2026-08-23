@@ -218,7 +218,7 @@ describe('MachinePage', () => {
     service.mockResolvedValue({ machine: restocked });
     const user = userEvent.setup();
 
-    await user.click(screen.getByRole('button', { name: 'Service' }));
+    await user.click(screen.getByRole('button', { name: 'Management' }));
     await user.clear(screen.getByRole('spinbutton', { name: /WATER/ }));
     await user.type(screen.getByRole('spinbutton', { name: /WATER/ }), '20');
     await user.click(screen.getByRole('button', { name: 'Apply' }));
@@ -241,7 +241,7 @@ describe('MachinePage', () => {
 
     expect(slot.getAllByRole('button')).toHaveLength(4);
 
-    await user.click(screen.getByRole('button', { name: 'Service' }));
+    await user.click(screen.getByRole('button', { name: 'Management' }));
     await user.click(screen.getByRole('tab', { name: 'Coins' }));
 
     expect(screen.getAllByRole('checkbox')).toHaveLength(6);
@@ -256,7 +256,7 @@ describe('MachinePage', () => {
     service.mockResolvedValue({ machine });
     const user = userEvent.setup();
 
-    await user.click(screen.getByRole('button', { name: 'Service' }));
+    await user.click(screen.getByRole('button', { name: 'Management' }));
     await user.click(screen.getByRole('tab', { name: 'Coins' }));
     await user.click(screen.getByRole('checkbox', { name: '0.50 — accepted' }));
     await user.click(screen.getByRole('button', { name: 'Apply' }));
@@ -340,10 +340,10 @@ describe('MachinePage', () => {
       const user = userEvent.setup();
       await openTheOffPanel();
 
-      await user.click(screen.getByRole('button', { name: 'Service' }));
+      await user.click(screen.getByRole('button', { name: 'Management' }));
       await user.click(screen.getByRole('tab', { name: 'Coins' }));
 
-      expect(screen.getByRole('dialog', { name: 'Service' })).toBeVisible();
+      expect(screen.getByRole('dialog', { name: 'Management' })).toBeVisible();
       expect(screen.getByRole('checkbox', { name: '0.25 — accepted' })).toBeEnabled();
     });
   });
@@ -360,7 +360,7 @@ describe('MachinePage', () => {
     );
     const user = userEvent.setup();
 
-    await user.click(screen.getByRole('button', { name: 'Service' }));
+    await user.click(screen.getByRole('button', { name: 'Management' }));
     await user.click(screen.getByRole('button', { name: 'Apply' }));
 
     expect(await screen.findByText('Invalid: products[0].count')).toBeVisible();

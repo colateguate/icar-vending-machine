@@ -227,12 +227,12 @@ export default function ServiceDrawer({
         ref={triggerRef}
         type="button"
       >
-        Service
+        Management
       </button>
 
       {isOpen && (
         <div
-          aria-label="Service"
+          aria-label="Management"
           className="service__drawer"
           id="service-drawer"
           ref={takeFocus}
