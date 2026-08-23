@@ -93,7 +93,7 @@ test('the controls keep the names a screen reader reads out', async ({ page }) =
   const named = await namedNodes(page);
 
   expect(named).toContainEqual({ role: 'heading', name: 'Vending machine' });
-  expect(named).toContainEqual({ role: 'button', name: 'Service' });
+  expect(named).toContainEqual({ role: 'button', name: 'Management' });
   expect(named).toContainEqual({ role: 'region', name: 'Products' });
   expect(named).toContainEqual({ role: 'region', name: 'Insert a coin' });
   expect(named).toContainEqual({ role: 'status', name: 'Display' });
@@ -127,8 +127,8 @@ test('the controls keep the names a screen reader reads out', async ({ page }) =
  */
 test('the drawer names its controls out of text that is never on screen', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Service' }).click();
-  await expect(page.getByRole('dialog', { name: 'Service' })).toBeVisible();
+  await page.getByRole('button', { name: 'Management' }).click();
+  await expect(page.getByRole('dialog', { name: 'Management' })).toBeVisible();
 
   // The drawer opens on Products; only the selected tab's panel is mounted, so
   // each half is read with its own tab in front. The coin switch is the name
@@ -178,9 +178,9 @@ test('no field in the drawer is too narrow for what it holds', async ({ page }) 
    */
   await page.setViewportSize({ width: 360, height: 640 });
   await page.goto('/');
-  await page.getByRole('button', { name: 'Service' }).click();
+  await page.getByRole('button', { name: 'Management' }).click();
 
-  const drawer = page.getByRole('dialog', { name: 'Service' });
+  const drawer = page.getByRole('dialog', { name: 'Management' });
 
   await expect(drawer).toBeVisible();
 
