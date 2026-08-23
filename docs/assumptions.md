@@ -2,9 +2,11 @@
 
 Everywhere the brief was silent, a decision was still required. This is the list, so a reader can tell a deliberate interpretation from an oversight.
 
-## The machine never gives back a 1.00 coin
+## The big coins go in and never come out
 
 The brief accepts four coins (0.05, 0.10, 0.25, 1) but lists only three as valid *responses*. Example 3 confirms it: 1.00 for a 0.65 item comes back as 0.25 + 0.10, never as a coin of 1.00. Modelled explicitly as `CoinDenomination::isDispensableAsChange()` and enforced inside the change policy, so no caller can forget it.
+
+When the acceptor grew to six denominations (ADR-0018), the same line was read one coin further in each direction: the 2.00 joins the 1.00 on the side that goes in and never comes out — it is the coin the brief would have named next — while the 0.50 is dispensed as change, which is where every real machine puts it. A denomination a technician has switched off is never dispensed either, whatever its size: the machine does not hand back a coin it would refuse to take.
 
 ## SERVICE sets absolute values
 
